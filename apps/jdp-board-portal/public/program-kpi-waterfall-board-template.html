@@ -1091,6 +1091,20 @@
   body.pdf-exporting {
     background: #ffffff !important;
   }
+  body.pdf-exporting,
+  body.pdf-exporting * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.pdf-exporting {
+    font-size: 11px !important;
+  }
+  body.pdf-exporting #main,
+  body.pdf-exporting .footer-inner {
+    width: 7.25in !important;
+    max-width: 7.25in !important;
+    margin: 0 auto !important;
+  }
   body.pdf-exporting .topbar,
   body.pdf-exporting .hero-actions,
   body.pdf-exporting .section-actions,
@@ -1101,6 +1115,146 @@
   }
   body.pdf-exporting .program-list {
     position: static !important;
+  }
+  body.pdf-exporting .hero {
+    min-height: 0 !important;
+  }
+  body.pdf-exporting .hero-inner,
+  body.pdf-exporting .builder-shell {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px 0 !important;
+  }
+  body.pdf-exporting .hero h1 {
+    max-width: none !important;
+    font-size: 26px !important;
+    line-height: 1.05 !important;
+    margin: 4px 0 8px !important;
+  }
+  body.pdf-exporting .hero p,
+  body.pdf-exporting .section-head p,
+  body.pdf-exporting .quarter-section p,
+  body.pdf-exporting .program-section .meta {
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+  }
+  body.pdf-exporting .hero-panel,
+  body.pdf-exporting .program-list,
+  body.pdf-exporting .program-editor,
+  body.pdf-exporting .summary-card,
+  body.pdf-exporting .visual-card,
+  body.pdf-exporting .quarter-section,
+  body.pdf-exporting .program-section,
+  body.pdf-exporting .stat {
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  body.pdf-exporting .hero-panel,
+  body.pdf-exporting .program-editor,
+  body.pdf-exporting .summary-card,
+  body.pdf-exporting .visual-card,
+  body.pdf-exporting .quarter-section,
+  body.pdf-exporting .program-section {
+    padding: 10px !important;
+  }
+  body.pdf-exporting .section,
+  body.pdf-exporting .section.summary-section,
+  body.pdf-exporting .waterfall-visual-section {
+    padding: 12px 0 !important;
+    break-inside: auto !important;
+  }
+  body.pdf-exporting .section-head {
+    margin-bottom: 10px !important;
+    gap: 8px !important;
+  }
+  body.pdf-exporting .section-head h2 {
+    font-size: 18px !important;
+    line-height: 1.1 !important;
+  }
+  body.pdf-exporting .totals,
+  body.pdf-exporting .quarter-rollup,
+  body.pdf-exporting .summary-grid,
+  body.pdf-exporting .sections-grid,
+  body.pdf-exporting .tracking-strip,
+  body.pdf-exporting .program-value-strip,
+  body.pdf-exporting .actuals-grid {
+    gap: 8px !important;
+  }
+  body.pdf-exporting .totals {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  body.pdf-exporting .quarter-rollup,
+  body.pdf-exporting .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  body.pdf-exporting .sections-grid,
+  body.pdf-exporting .program-value-strip,
+  body.pdf-exporting .actuals-grid,
+  body.pdf-exporting .tracking-strip {
+    grid-template-columns: 1fr !important;
+  }
+  body.pdf-exporting .stat {
+    min-height: 0 !important;
+    padding: 9px !important;
+  }
+  body.pdf-exporting .stat span,
+  body.pdf-exporting .summary-card dt,
+  body.pdf-exporting .quarter-metrics span,
+  body.pdf-exporting .program-value-strip em {
+    font-size: 8.5px !important;
+  }
+  body.pdf-exporting .stat strong,
+  body.pdf-exporting .summary-card dd,
+  body.pdf-exporting .quarter-card strong,
+  body.pdf-exporting .quarter-metrics b,
+  body.pdf-exporting .program-value-strip strong {
+    font-size: 13px !important;
+    line-height: 1.05 !important;
+    word-break: normal !important;
+  }
+  body.pdf-exporting .program-list-label,
+  body.pdf-exporting .program-tabs,
+  body.pdf-exporting .channel-expanded {
+    max-height: none !important;
+  }
+  body.pdf-exporting .program-tab {
+    min-height: 0 !important;
+    padding: 7px !important;
+  }
+  body.pdf-exporting .waterfall-row {
+    grid-template-columns: 1.05fr 1.15fr .7fr !important;
+    gap: 7px !important;
+    min-height: 30px !important;
+    padding: 6px 0 !important;
+  }
+  body.pdf-exporting .waterfall-row strong,
+  body.pdf-exporting .mini-step strong {
+    font-size: 11px !important;
+  }
+  body.pdf-exporting .pipeline-waterfall-card svg,
+  body.pdf-exporting #pipelineWaterfallImage svg {
+    max-height: 3.9in !important;
+  }
+  body.pdf-exporting .program-section table {
+    font-size: 9px !important;
+  }
+  body.pdf-exporting .program-section th,
+  body.pdf-exporting .program-section td {
+    padding: 6px !important;
+  }
+  body.pdf-exporting .summary-table-wrap {
+    overflow: visible !important;
+  }
+  body.pdf-exporting table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+  body.pdf-exporting th,
+  body.pdf-exporting td {
+    overflow-wrap: anywhere !important;
   }
 </style>
 
@@ -2613,12 +2767,12 @@
       await new Promise(resolve => requestAnimationFrame(resolve));
       const source = document.getElementById('main');
       const options = {
-        margin: [0.35, 0.35, 0.35, 0.35],
+        margin: [0.25, 0.25, 0.25, 0.25],
         filename: pdfFileName(),
         image: { type: 'jpeg', quality: 0.96 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+        html2canvas: { scale: 1.6, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, windowWidth: 840 },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.stat', '.summary-card', '.quarter-section', '.visual-card'] }
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.stat', '.summary-card', '.quarter-card', '.quarter-section', '.visual-card', '.program-section', '.waterfall-row'] }
       };
       await window.html2pdf().set(options).from(source).save();
       safeAnalytic('pdf_export_complete', { text: 'Full board PDF downloaded', area: 'pdf output', customerName: customerNameForSheet() });
