@@ -57,11 +57,39 @@ export function createProgram(index = 1): Program {
 }
 
 export function createDefaultState(): BoardState {
+  const program = createProgram(1);
   return {
+    version: 1,
+    customerName: 'Customer',
     selectedCsm: 'Meghan Richardson',
-    activeYear: '2026',
-    startQuarter: 'Q1',
-    programs: [createProgram(1)],
+    activeId: program.id,
+    planSettings: {
+      activeYear: '2026',
+      startQuarter: 'Q1'
+    },
+    programs: [{
+      ...program,
+      subSegment: '',
+      secondaryContent: '',
+      locked: false,
+      mode: 'Standard',
+      actual: {
+        liveBoards: 0,
+        engaged: 0,
+        meetings: 0,
+        pipelineOpps: 0,
+        closedDeals: 0,
+        pipelineGoal: 0,
+        bookings: 0
+      },
+      custom: {
+        inMarket: 1,
+        engaged: 0.3,
+        meeting: 0.1,
+        pipeline: 0.5,
+        close: 0.3
+      }
+    }],
     updatedAt: new Date().toISOString()
   };
 }
@@ -76,6 +104,9 @@ export function createBoard(ownerEmail: string, customerName: string): BoardReco
     customerName: cleanCustomer,
     createdAt: now,
     updatedAt: now,
-    state: createDefaultState()
+    state: {
+      ...createDefaultState(),
+      customerName: cleanCustomer
+    }
   };
 }

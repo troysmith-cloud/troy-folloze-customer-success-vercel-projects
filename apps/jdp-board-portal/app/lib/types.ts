@@ -20,13 +20,19 @@ export type Program = {
   actualBookings: number;
 };
 
-export type BoardState = {
-  selectedCsm: string;
-  activeYear: '2026' | '2027' | '2028' | '2029';
-  startQuarter: 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  programs: Program[];
-  updatedAt: string;
+export type SkillBoardState = Record<string, unknown> & {
+  selectedCsm?: string;
+  activeId?: string;
+  planSettings?: {
+    activeYear?: string;
+    startQuarter?: string;
+    [key: string]: unknown;
+  };
+  programs?: Array<Record<string, unknown>>;
+  updatedAt?: string;
 };
+
+export type BoardState = SkillBoardState;
 
 export type BoardRecord = {
   id: string;
