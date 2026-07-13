@@ -1,4 +1,4 @@
-import { head, list, put } from '@vercel/blob';
+import { get, list, put } from '@vercel/blob';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { BoardRecord, BoardSummary } from './types';
@@ -23,11 +23,10 @@ function boardPath(boardId: string) {
 
 async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   if (hasBlob()) {
-    const blob = await head(pathname).catch(() => null);
-    if (!blob) return fallback;
-    const response = await fetch(blob.downloadUrl || blob.url);
-    if (!response.ok) return fallback;
-    return response.json() as Promise<T>;
+    const result = await get(pathname, { access: 'private', useCache: false }).catch(() => null);
+    if (!result || result.statusCode !== 200) return fallback;
+    const text = await new Response(result.stream).text();
+    return JSON.parse(text) as T;
   }
   const filePath = path.join(LOCAL_DATA_DIR, pathname);
   try {
@@ -41,9 +40,10 @@ async function writeJson(pathname: string, value: unknown) {
   const content = JSON.stringify(value, null, 2);
   if (hasBlob()) {
     await put(pathname, content, {
-      access: 'public',
+      access: 'private',
       contentType: 'application/json',
-      addRandomSuffix: false
+      addRandomSuffix: false,
+      allowOverwrite: true
     });
     return;
   }
