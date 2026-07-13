@@ -149,20 +149,59 @@ button, input, textarea, select {
   resize: vertical;
 }
 
+.help-text {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .board-list {
   display: grid;
   gap: 12px;
 }
 
 .board-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
-  align-items: center;
+  align-items: start;
   gap: 16px;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
+}
+
+.access-panel {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+}
+
+.access-panel label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.access-panel textarea {
+  width: 100%;
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--navy);
+  resize: vertical;
+}
+
+.access-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .muted { color: var(--muted); }
@@ -230,7 +269,7 @@ button, input, textarea, select {
 }
 
 @media (max-width: 860px) {
-  .grid, .planner-layout, .metrics {
+  .grid, .planner-layout, .metrics, .board-row {
     grid-template-columns: 1fr;
   }
   .sidebar { position: static; }

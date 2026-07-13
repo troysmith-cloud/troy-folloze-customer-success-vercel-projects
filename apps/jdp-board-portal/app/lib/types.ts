@@ -37,6 +37,7 @@ export type BoardState = SkillBoardState;
 export type BoardRecord = {
   id: string;
   ownerEmail: string;
+  sharedEmails?: string[];
   title: string;
   customerName: string;
   createdAt: string;
@@ -44,4 +45,6 @@ export type BoardRecord = {
   state: BoardState;
 };
 
-export type BoardSummary = Pick<BoardRecord, 'id' | 'title' | 'customerName' | 'updatedAt'>;
+export type BoardSummary = Pick<BoardRecord, 'id' | 'title' | 'customerName' | 'updatedAt'> & {
+  accessRole: 'owner' | 'shared';
+};

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Header } from '../components/Header';
 import { getSession } from '../lib/auth';
 import { listBoards } from '../lib/storage';
+import { AccessManager } from './AccessManager';
 import { NewBoardForm } from './NewBoardForm';
 
 export default async function DashboardPage() {
@@ -34,7 +35,10 @@ export default async function DashboardPage() {
                 <div className="board-row" key={board.id}>
                   <div>
                     <strong>{board.title}</strong>
-                    <div className="muted">{board.customerName} · Updated {new Date(board.updatedAt).toLocaleString()}</div>
+                    <div className="muted">
+                      {board.customerName} · {board.accessRole === 'owner' ? 'Owner' : 'Shared access'} · Updated {new Date(board.updatedAt).toLocaleString()}
+                    </div>
+                    {board.accessRole === 'owner' ? <AccessManager boardId={board.id} /> : null}
                   </div>
                   <Link className="button primary" href={`/boards/${board.id}`}>Open</Link>
                 </div>

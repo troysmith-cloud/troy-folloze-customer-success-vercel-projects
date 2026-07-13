@@ -1,4 +1,5 @@
 import type { BoardRecord, BoardState, Program } from './types';
+import { normalizeEmail, normalizeEmailList } from './storage';
 
 export const programTypes = [
   '1:1 ABM',
@@ -94,12 +95,14 @@ export function createDefaultState(): BoardState {
   };
 }
 
-export function createBoard(ownerEmail: string, customerName: string): BoardRecord {
+export function createBoard(ownerEmail: string, customerName: string, sharedEmails: string[] = []): BoardRecord {
   const now = new Date().toISOString();
   const cleanCustomer = customerName.trim() || 'Customer';
+  const owner = normalizeEmail(ownerEmail);
   return {
     id: crypto.randomUUID(),
-    ownerEmail,
+    ownerEmail: owner,
+    sharedEmails: normalizeEmailList(sharedEmails).filter(email => email !== owner),
     title: `${cleanCustomer} Joint Deployment Program`,
     customerName: cleanCustomer,
     createdAt: now,
