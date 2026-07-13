@@ -1,6 +1,6 @@
-# Vercel Projects
+# Troy Folloze Customer Success Vercel Projects
 
-Clean home for Vercel-deployable apps.
+Clean home for Troy Folloze Customer Success Vercel-deployable apps.
 
 ## Structure
 
