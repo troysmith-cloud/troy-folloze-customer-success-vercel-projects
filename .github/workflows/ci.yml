@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  repo-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block private artifact extensions
+        run: |
+          blocked="$(git ls-files '*.xlsx' '*.xls' '*.docx' '*.pptx' '*.pdf' '*.csv' '*.tsv' '*.ndjson' '.env' '.env.*' || true)"
+          if [ -n "$blocked" ]; then
+            echo "Blocked private or generated artifacts:"
+            echo "$blocked"
+            exit 1
+          fi
