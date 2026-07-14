@@ -50,6 +50,7 @@ export type BoardRecord = {
   customerDomain?: string;
   customerLogoUrl?: string;
   customerLogoAlt?: string;
+  customerLogoIncludesName?: boolean;
   accessLog?: BoardAccessLogEntry[];
   title: string;
   customerName: string;

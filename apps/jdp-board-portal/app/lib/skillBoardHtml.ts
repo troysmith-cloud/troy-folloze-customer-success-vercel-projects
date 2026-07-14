@@ -29,11 +29,13 @@ function replaceFunction(source: string, functionName: string, beforeNextFunctio
 const customerLogos = [
   {
     matches: ({ customerName }: BoardRecord) => customerName.trim().toLowerCase() === 'conga',
-    markup: '<img class="customer-logo" src="/conga-logo.png" alt="Conga logo">'
+    markup: '<img class="customer-logo" src="/conga-logo.png" alt="Conga logo">',
+    includesName: true
   },
   {
     matches: ({ id, customerName }: BoardRecord) => id === '3b6ca55b-339f-4f67-8a9d-209bdfbd241c' || customerName.trim().toLowerCase() === 'slb',
-    markup: '<img class="customer-logo" src="/slb-logo.svg" alt="SLB logo">'
+    markup: '<img class="customer-logo" src="/slb-logo.svg" alt="SLB logo">',
+    includesName: true
   }
 ];
 
@@ -41,14 +43,17 @@ function customerLogoForBoard(board: BoardRecord) {
   return customerLogos.find(logo => logo.matches(board));
 }
 
-function savedCustomerLogoMarkup(board: BoardRecord) {
+function savedCustomerLogo(board: BoardRecord) {
   const url = (board.customerLogoUrl || '').trim();
   if (!url) return null;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:') return null;
     const alt = (board.customerLogoAlt || `${board.customerName} logo`).trim();
-    return `<img class="customer-logo" src="${escapeAttribute(parsed.toString())}" alt="${escapeAttribute(alt)}">`;
+    return {
+      markup: `<img class="customer-logo" src="${escapeAttribute(parsed.toString())}" alt="${escapeAttribute(alt)}">`,
+      includesName: Boolean(board.customerLogoIncludesName)
+    };
   } catch {
     return null;
   }
@@ -59,8 +64,18 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
   const stateEndpoint = `/api/boards/${encodeURIComponent(board.id)}/state`;
   let html = await readFile(TEMPLATE_PATH, 'utf8');
   const customerLogo = customerLogoForBoard(board);
-  const customerLogoMarkup = savedCustomerLogoMarkup(board) || customerLogo?.markup || '<div class="customer-logo-placeholder" aria-hidden="true"></div>';
+  const savedLogo = savedCustomerLogo(board);
+  const logo = savedLogo || customerLogo || {
+    markup: '<div class="customer-logo-placeholder" aria-hidden="true"></div>',
+    includesName: false
+  };
+  const customerLogoMarkup = logo.markup;
   const hasCustomerLogo = customerLogoMarkup.includes('class="customer-logo"');
+  const customerPlaceholderClass = [
+    'customer-placeholder',
+    hasCustomerLogo ? 'has-logo' : '',
+    logo.includesName ? 'logo-includes-name' : ''
+  ].filter(Boolean).join(' ');
 
   html = html
     .replace('THEME_URL_PLACEHOLDER', 'data:text/css,')
@@ -68,7 +83,7 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('SHEETS_OUTPUT_URL_PLACEHOLDER', '')
     .replace('SHEET_BUILDER_ENDPOINT_URL_PLACEHOLDER', '')
     .replace('BOARD_STATE_ENDPOINT_URL_PLACEHOLDER', stateEndpoint)
-    .replace('class="customer-placeholder"', hasCustomerLogo ? 'class="customer-placeholder has-logo"' : 'class="customer-placeholder"')
+    .replace('class="customer-placeholder"', `class="${customerPlaceholderClass}"`)
     .replace('<div class="customer-logo-placeholder" aria-hidden="true"></div>', customerLogoMarkup)
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
     .replace('<span>Folloze Deployment Planning & Program Planner</span>', '<span>Folloze Deployment Planning & Program Planner</span>');

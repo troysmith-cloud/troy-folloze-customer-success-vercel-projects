@@ -2,6 +2,7 @@ export type CompanyBrand = {
   name: string;
   domain: string;
   logoUrl: string;
+  logoIncludesName?: boolean;
 };
 
 type ClearbitCompany = {
@@ -88,7 +89,8 @@ export async function resolveCompanyBrand(customerName: string): Promise<Company
     return {
       name: match.name || query,
       domain: match.domain,
-      logoUrl: faviconLogoUrl(match.domain)
+      logoUrl: faviconLogoUrl(match.domain),
+      logoIncludesName: false
     };
   } catch {
     return null;
@@ -104,7 +106,8 @@ export async function resolveCompanyBrandFromWebsite(customerWebsite: string): P
   const fallback = {
     name: displayNameFromDomain(domain),
     domain,
-    logoUrl: faviconLogoUrl(domain)
+    logoUrl: faviconLogoUrl(domain),
+    logoIncludesName: false
   };
 
   const controller = new AbortController();
@@ -122,7 +125,8 @@ export async function resolveCompanyBrandFromWebsite(customerWebsite: string): P
         return {
           name: match.name || fallback.name,
           domain: matchedDomain || domain,
-          logoUrl: faviconLogoUrl(matchedDomain || domain)
+          logoUrl: faviconLogoUrl(matchedDomain || domain),
+          logoIncludesName: false
         };
       }
     }
