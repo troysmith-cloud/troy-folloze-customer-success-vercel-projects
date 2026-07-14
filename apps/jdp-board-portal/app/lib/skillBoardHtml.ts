@@ -22,10 +22,17 @@ function replaceFunction(source: string, functionName: string, beforeNextFunctio
   return `${source.slice(0, start)}${replacement}${source.slice(end)}`;
 }
 
+function isCongaBoard(customerName: string) {
+  return customerName.trim().toLowerCase() === 'conga';
+}
+
 export async function renderSkillBoardHtml(board: BoardRecord) {
   const customerName = escapeHtml(board.customerName);
   const stateEndpoint = `/api/boards/${encodeURIComponent(board.id)}/state`;
   let html = await readFile(TEMPLATE_PATH, 'utf8');
+  const customerLogoMarkup = isCongaBoard(board.customerName)
+    ? '<img class="customer-logo" src="/conga-logo.png" alt="Conga logo">'
+    : '<div class="customer-logo-placeholder" aria-hidden="true"></div>';
 
   html = html
     .replace('THEME_URL_PLACEHOLDER', 'data:text/css,')
@@ -33,6 +40,7 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('SHEETS_OUTPUT_URL_PLACEHOLDER', '')
     .replace('SHEET_BUILDER_ENDPOINT_URL_PLACEHOLDER', '')
     .replace('BOARD_STATE_ENDPOINT_URL_PLACEHOLDER', stateEndpoint)
+    .replace('<div class="customer-logo-placeholder" aria-hidden="true"></div>', customerLogoMarkup)
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
     .replace('<span>Folloze Joint Deployment Program Template Board</span>', '<span>Folloze Joint Deployment Program Template Board</span>');
 
