@@ -97,7 +97,7 @@ export function createDefaultState(): BoardState {
   };
 }
 
-export function createBoard(ownerEmail: string, customerName: string, sharedEmails: string[] = [], brand?: CompanyBrand | null): BoardRecord {
+export function createBoard(ownerEmail: string, customerName: string, sharedEmails: string[] = [], brand?: CompanyBrand | null, title?: string): BoardRecord {
   const now = new Date().toISOString();
   const cleanCustomer = customerName.trim() || 'Customer';
   const owner = normalizeEmail(ownerEmail);
@@ -105,7 +105,7 @@ export function createBoard(ownerEmail: string, customerName: string, sharedEmai
     id: crypto.randomUUID(),
     ownerEmail: owner,
     sharedEmails: normalizeEmailList(sharedEmails).filter(email => email !== owner),
-    title: BOARD_PLANNER_TITLE,
+    title: title?.trim() || BOARD_PLANNER_TITLE,
     customerName: cleanCustomer,
     customerDomain: brand?.domain,
     customerLogoUrl: brand?.logoUrl,

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 
 export function NewBoardForm() {
-  const [customerName, setCustomerName] = useState('');
+  const [customerWebsite, setCustomerWebsite] = useState('');
   const [sharedEmails, setSharedEmails] = useState('');
   const [status, setStatus] = useState('');
 
@@ -20,7 +20,7 @@ export function NewBoardForm() {
     const response = await fetch('/api/boards', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ customerName, sharedEmails: parseEmails(sharedEmails) })
+      body: JSON.stringify({ customerWebsite, sharedEmails: parseEmails(sharedEmails) })
     });
     if (!response.ok) {
       setStatus('Could not create board.');
@@ -33,15 +33,15 @@ export function NewBoardForm() {
   return (
     <form onSubmit={submit}>
       <div className="field">
-        <label htmlFor="customerName">Customer name</label>
+        <label htmlFor="customerWebsite">Customer website</label>
         <input
-          id="customerName"
-          value={customerName}
-          onChange={event => setCustomerName(event.target.value)}
-          placeholder="Customer"
+          id="customerWebsite"
+          value={customerWebsite}
+          onChange={event => setCustomerWebsite(event.target.value)}
+          placeholder="https://www.customer.com"
           required
         />
-        <span className="help-text">Use the company name. The board will look up the company and place its logo in the board header when a match is found.</span>
+        <span className="help-text">Use the customer website. The board will pull in the company name, place its logo in the board header, and create a numbered board name.</span>
       </div>
       <div className="field">
         <label htmlFor="sharedEmails">Authorized customer emails</label>
