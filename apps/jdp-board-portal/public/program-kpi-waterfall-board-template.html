@@ -414,6 +414,24 @@
     overflow: auto;
     padding-right: 4px;
   }
+  .program-quarter-group {
+    display: grid;
+    gap: 8px;
+  }
+  .program-quarter-heading {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border: 1px solid var(--flz-line);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--flz-blue);
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
   .program-tab-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -563,13 +581,30 @@
   .wide-field { grid-column: 1 / -1; }
   .planner-settings {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     margin: -6px 0 18px;
     padding: 14px;
     border: 1px solid var(--flz-line);
     border-radius: var(--radius);
     background: var(--flz-soft);
+  }
+  .scale-field {
+    display: grid;
+    gap: 7px;
+  }
+  .scale-field input[type="range"] {
+    min-height: 28px;
+    padding: 0;
+    accent-color: var(--flz-blue);
+  }
+  .scale-readout {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--flz-slate);
+    font-size: 12px;
+    font-weight: 800;
   }
   .channel-picker {
     border: 1px solid #cce1f2;
@@ -799,6 +834,39 @@
     color: var(--flz-navy);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+  .campaign-rollup {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin: 0 0 20px;
+  }
+  .campaign-card {
+    border: 1px solid var(--flz-line);
+    border-radius: var(--radius);
+    background: white;
+    padding: 14px;
+    box-shadow: 0 10px 26px rgba(7, 20, 40, .06);
+    min-width: 0;
+  }
+  .campaign-card h3 {
+    margin: 0 0 8px;
+    color: var(--flz-navy);
+    font-size: 16px;
+    overflow-wrap: anywhere;
+  }
+  .campaign-card p {
+    margin: 0;
+    color: var(--flz-muted);
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .campaign-card strong {
+    display: block;
+    margin-top: 8px;
+    color: var(--flz-blue);
+    font-size: 20px;
+    line-height: 1.1;
   }
 
   .summary-band {
@@ -1067,7 +1135,7 @@
   @media (max-width: 1080px) {
     .hero-inner, .builder-shell { grid-template-columns: 1fr; }
     .program-list { position: static; }
-    .summary-grid, .sections-grid, .quarter-rollup, .planner-settings { grid-template-columns: 1fr; }
+    .summary-grid, .sections-grid, .quarter-rollup, .campaign-rollup, .planner-settings { grid-template-columns: 1fr; }
     .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .actuals-grid, .tracking-strip, .program-value-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
@@ -1251,6 +1319,11 @@
         <label>Quarter order</label>
         <input id="quarterOrderPreview" type="text" value="Q1 -> Q2 -> Q3 -> Q4" readonly>
       </div>
+      <div class="scale-field">
+        <label for="plan-accountScale">Account scale</label>
+        <input id="plan-accountScale" type="range" min="50" max="300" step="5" value="100" oninput="updatePlanSetting('accountScale', this.value)">
+        <div class="scale-readout"><span id="accountScaleLabel">100%</span><span>applies before benchmarks</span></div>
+      </div>
     </div>
 
     <div class="totals" aria-label="Portfolio totals">
@@ -1260,6 +1333,7 @@
       <div class="stat"><span>Sales meetings</span><strong id="totalMeetings">0</strong><em>Scheduled from engagement</em></div>
     </div>
     <div class="quarter-rollup" id="quarterRollup" aria-label="Quarter rollup"></div>
+    <div class="campaign-rollup" id="campaignRollup" aria-label="Campaign rollup"></div>
 
     <div class="builder-shell" id="add-program-section">
       <aside class="program-list" aria-label="Program list">
@@ -1419,6 +1493,7 @@
       programYear: '2026',
       type: '1:1 ABM',
       name: 'Example Program (replace)',
+      campaign: 'Example campaign',
       segment: 'Target account segment',
       subSegment: 'Priority audience',
       channels: ['Integrated mix'],
@@ -1438,7 +1513,8 @@
   let selectedCsm = 'Meghan Richardson';
   let planSettings = {
     startQuarter: 'Q1',
-    activeYear: '2026'
+    activeYear: '2026',
+    accountScale: 100
   };
   let channelEditorOpen = {};
   let channelDrafts = {};
@@ -1551,6 +1627,7 @@
       programYear: programYears.includes(String(program.programYear)) ? String(program.programYear) : planSettings.activeYear,
       type: program.type || '1:few ABM',
       name: program.name || `Program ${index + 1}`,
+      campaign: program.campaign || '',
       segment: program.segment || '',
       subSegment: program.subSegment || '',
       channels: normalizeChannels(program.channels),
@@ -1638,6 +1715,7 @@
     restoringState = true;
     programs = state.programs.map(normalizeProgramState);
     planSettings = { ...planSettings, ...(state.planSettings || {}) };
+    planSettings.accountScale = Math.max(50, Math.min(300, Number(planSettings.accountScale) || 100));
     selectedCsm = state.selectedCsm || selectedCsm;
     activeId = programs.some(program => program.id === state.activeId) ? state.activeId : (programs[0] ? programs[0].id : null);
     channelEditorOpen = state.channelEditorOpen && typeof state.channelEditorOpen === 'object'
@@ -1798,13 +1876,18 @@
     return Number(program.programYear || planSettings.activeYear) * 10 + fiscalQuarterIndex(program.quarter);
   }
 
+  function accountScaleFactor() {
+    return Math.max(50, Math.min(300, Number(planSettings.accountScale) || 100)) / 100;
+  }
+
   function orderedPrograms() {
     return [...programs].sort((a, b) => periodSortValue(a) - periodSortValue(b) || programs.indexOf(a) - programs.indexOf(b));
   }
 
   function calculate(program) {
     const b = benchmarkFor(program);
-    const accounts = Number(program.accounts) || 0;
+    const baseAccounts = Number(program.accounts) || 0;
+    const accounts = Math.round(baseAccounts * accountScaleFactor());
     const dealSize = Number(program.dealSize) || 0;
     const projectedBoards = Number(program.projectedBoards) || 0;
     const actual = actualsFor(program);
@@ -1815,6 +1898,7 @@
     const closedDeals = Math.round(pipelineOpps * b.close);
     return {
       b,
+      baseAccounts,
       accounts,
       dealSize,
       inMarket,
@@ -1872,6 +1956,25 @@
 
   function programsForPeriod(year, quarter) {
     return programs.filter(p => String(p.programYear || planSettings.activeYear) === String(year) && (p.quarter || 'Q1') === quarter);
+  }
+
+  function campaignName(program) {
+    return (program.campaign || 'Unassigned campaign').trim() || 'Unassigned campaign';
+  }
+
+  function campaignTotals() {
+    const byCampaign = new Map();
+    for (const program of programs) {
+      const name = campaignName(program);
+      const group = byCampaign.get(name) || [];
+      group.push(program);
+      byCampaign.set(name, group);
+    }
+    return Array.from(byCampaign.entries()).map(([name, campaignPrograms]) => ({
+      name,
+      programs: campaignPrograms,
+      totals: totals(campaignPrograms)
+    })).sort((a, b) => b.totals.pipelineGoal - a.totals.pipelineGoal || a.name.localeCompare(b.name));
   }
 
   function periodDefinitions() {
@@ -1967,7 +2070,7 @@
   }
 
   function updatePlanSetting(key, value) {
-    planSettings[key] = value;
+    planSettings[key] = key === 'accountScale' ? Math.max(50, Math.min(300, Number(value) || 100)) : value;
     render();
     persistStateDebounced();
     safeAnalytic('model_update', { text: key, area: 'program planner settings', value: String(value) });
@@ -2021,6 +2124,7 @@
       programYear: seed.programYear || planSettings.activeYear,
       type: seed.type || '1:few ABM',
       name: seed.name || `Program ${programs.length + 1}`,
+      campaign: seed.campaign || '',
       segment: seed.segment || '',
       subSegment: seed.subSegment || '',
       channels: normalizeChannels(seed.channels),
@@ -2206,18 +2310,26 @@
       tabs.innerHTML = '<div class="empty">No programs yet. Add a program type to start Q1.</div>';
       return;
     }
-    tabs.innerHTML = programs.map((program, index) => {
+    tabs.innerHTML = visiblePeriodTotals().map(period => {
+      const quarterPrograms = programsForPeriod(period.year, period.quarter);
+      const rows = quarterPrograms.map(program => {
+      const index = programs.findIndex(item => item.id === program.id);
       const c = calculate(program);
       return `<div class="program-tab-row" draggable="true" data-program-id="${program.id}" ondragstart="handleProgramDragStart(event, '${program.id}')" ondragend="handleProgramDragEnd(event)" ondragover="handleProgramDragOver(event)" ondragleave="handleProgramDragLeave(event)" ondrop="handleProgramDrop(event, '${program.id}')">
         <button class="drag-handle" type="button" aria-label="Drag ${escapeHtml(program.name || program.type)} to reorder" title="Drag to reorder">⋮⋮</button>
         <button class="program-tab ${priorityClass(program)}" type="button" role="tab" aria-selected="${program.id === activeId}" onclick="setActive('${program.id}', this)">
           <strong>${index + 1}. ${escapeHtml(periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'))} · ${escapeHtml(program.type)}</strong>
-          <small>${escapeHtml(program.name || 'Unnamed program')} · ${escapeHtml(priorityLabel(program))} · ${money(c.pipelineGoal)} pipeline</small>
+          <small>${escapeHtml(program.name || 'Unnamed program')} · ${escapeHtml(campaignName(program))} · ${escapeHtml(priorityLabel(program))} · ${money(c.pipelineGoal)} pipeline</small>
         </button>
         <select class="priority-select ${priorityClass(program)}" ${canEditProgram(program) ? '' : 'disabled'} aria-label="Priority for ${escapeHtml(program.name || program.type)}" onchange="updateProgram('${program.id}', 'priority', this.value)">
           ${programPriorities.map(priority => `<option value="${priority}" ${priorityValue(program) === priority ? 'selected' : ''}>P${priority}</option>`).join('')}
         </select>
         <button class="delete-tab-btn" type="button" ${canEditProgram(program) ? '' : 'disabled'} onclick="removeProgram('${program.id}', this)" aria-label="Delete ${escapeHtml(program.name || program.type)}">Delete</button>
+      </div>`;
+      }).join('');
+      return `<div class="program-quarter-group">
+        <div class="program-quarter-heading">${escapeHtml(period.label)} · ${whole.format(quarterPrograms.length)} programs</div>
+        ${rows || '<div class="empty">No programs in this quarter.</div>'}
       </div>`;
     }).join('');
   }
@@ -2263,6 +2375,7 @@
         ${selectField(program, 'type', '+ Program Type', program.type, programTypes)}
         ${prioritySelectField(program)}
         ${inputField(program, 'name', 'Program Name', program.name, 'text', { wide: true })}
+        ${inputField(program, 'campaign', 'Campaign', program.campaign || '', 'text', { wide: true })}
         ${inputField(program, 'segment', 'Primary Segment/Audience', program.segment, 'text')}
         ${inputField(program, 'subSegment', 'Sub Category Segment/Audience', program.subSegment, 'text')}
         ${channelField(program)}
@@ -2379,9 +2492,14 @@
     const orderPreview = document.getElementById('quarterOrderPreview');
     const activeYear = document.getElementById('plan-activeYear');
     const startQuarter = document.getElementById('plan-startQuarter');
+    const accountScale = document.getElementById('plan-accountScale');
+    const accountScaleLabel = document.getElementById('accountScaleLabel');
+    const scalePct = Math.round(accountScaleFactor() * 100);
     if (orderPreview) orderPreview.value = quarterSequence().join(' -> ');
     if (activeYear) activeYear.value = planSettings.activeYear;
     if (startQuarter) startQuarter.value = planSettings.startQuarter;
+    if (accountScale) accountScale.value = String(scalePct);
+    if (accountScaleLabel) accountScaleLabel.textContent = `${scalePct}%`;
     document.getElementById('totalPrograms').textContent = whole.format(programs.length);
     document.getElementById('totalPipeline').textContent = money(t.pipelineGoal);
     document.getElementById('totalBookings').textContent = money(t.bookings);
@@ -2404,8 +2522,15 @@
         </div>
       </article>`;
     }).join('');
+    document.getElementById('campaignRollup').innerHTML = campaignTotals().map(({ name, programs: campaignPrograms, totals: campaignTotal }) => `
+      <article class="campaign-card">
+        <h3>${escapeHtml(name)}</h3>
+        <p>${whole.format(campaignPrograms.length)} programs · ${whole.format(campaignTotal.accounts)} scaled accounts · ${whole.format(campaignTotal.meetings)} meetings</p>
+        <strong>${money(campaignTotal.pipelineGoal)} pipeline</strong>
+      </article>
+    `).join('');
     document.getElementById('portfolioCards').innerHTML = [
-      ['Account coverage', [['Accounts targeted', whole.format(t.accounts)], ['Accounts in market', whole.format(t.inMarket)], ['Engaged accounts', whole.format(t.engaged)]]],
+      ['Account coverage', [['Scaled accounts targeted', whole.format(t.accounts)], ['Accounts in market', whole.format(t.inMarket)], ['Engaged accounts', whole.format(t.engaged)]]],
       ['Conversion output', [['Sales meetings', whole.format(t.meetings)], ['Pipeline opportunities', whole.format(t.pipelineOpps)], ['Closed deals', whole.format(t.closedDeals)]]],
       ['Board scaling', [['Projected live boards', whole.format(t.projectedBoards)], ['Published Boards', whole.format(t.actualLiveBoards)], ['Published board attainment', pct.format(attainment(t.actualLiveBoards, t.projectedBoards))]]],
       ['Actual performance', [['Actual meetings', whole.format(t.actualMeetings)], ['Actual pipeline', money(t.actualPipelineGoal)], ['Actual bookings', money(t.actualBookings)]]],
@@ -2546,6 +2671,7 @@
           <h3>${escapeHtml(p.type)}${p.name ? ` · ${escapeHtml(p.name)}` : ''}</h3>
           <div class="meta">
             <span class="chip">CSM: ${escapeHtml(selectedCsm)}</span>
+            <span class="chip">Campaign: ${escapeHtml(campaignName(p))}</span>
             <span class="chip priority-chip ${priorityClass(p)}">${escapeHtml(priorityLabel(p))}</span>
             <span class="chip">${escapeHtml(isCustomerBenchmarkMode(p.mode) ? customerBenchmarkMode : 'Standard')} benchmarks</span>
             ${p.segment ? `<span class="chip">${escapeHtml(p.segment)}</span>` : ''}
@@ -2583,7 +2709,7 @@
       exportedAt: new Date().toISOString(),
       customerHeadline: document.getElementById('hero-title').textContent.trim(),
       customerSuccessManager: selectedCsm,
-      planSettings: { ...planSettings, quarterOrder: quarterSequence() },
+      planSettings: { ...planSettings, accountScale: Math.round(accountScaleFactor() * 100), quarterOrder: quarterSequence() },
       slidesDeckUrl,
       sheetsOutputUrl,
       fullYear,
@@ -2595,6 +2721,12 @@
         totals: qt
       })),
       cumulative: cumulativeQuarterTotals(),
+      campaigns: campaignTotals().map(({ name, programs: campaignPrograms, totals: campaignTotal }) => ({
+        name,
+        programIds: campaignPrograms.map(program => program.id),
+        programCount: campaignPrograms.length,
+        totals: campaignTotal
+      })),
       programs: programs.map((program, index) => ({
         index: index + 1,
         id: program.id,
@@ -2603,6 +2735,7 @@
         period: periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'),
         type: program.type,
         name: program.name,
+        campaign: campaignName(program),
         segment: program.segment,
         subSegment: program.subSegment,
         channels: normalizeChannels(program.channels),
@@ -2626,8 +2759,8 @@
   function sheetExportPayload() {
     const base = slideExportPayload();
     const customerProgramHeaders = [
-      'Program #', 'Priority', '+ Program Type', 'Program Name', 'Segment / Audience', 'Channels', 'Content / Messaging', 'Notes',
-      'Benchmark Mode', 'Accounts Targeted', 'Avg Deal Size', 'Std In-Market %', 'Std Engage %', 'Std Meeting %',
+      'Program #', 'Priority', 'Campaign', '+ Program Type', 'Program Name', 'Segment / Audience', 'Channels', 'Content / Messaging', 'Notes',
+      'Benchmark Mode', 'Base Accounts Targeted', 'Account Scale %', 'Scaled Accounts Targeted', 'Avg Deal Size', 'Std In-Market %', 'Std Engage %', 'Std Meeting %',
       'Std Pipeline %', 'Std Close %', 'Custom In-Market %', 'Custom Engage %', 'Custom Meeting %', 'Custom Pipeline %',
       'Custom Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
       'Selected Close %', 'Accounts In Market', 'Engaged Accounts', 'Sales Meetings', 'Pipeline Opps', 'Closed Deals',
@@ -2650,6 +2783,7 @@
           rows: base.programs.map(program => [
             program.index,
             program.priorityLabel,
+            program.campaign,
             program.type,
             program.name,
             [program.segment, program.subSegment].filter(Boolean).join(' / '),
@@ -2657,6 +2791,8 @@
             [program.content, program.secondaryContent].filter(Boolean).join(' / '),
             program.notes,
             program.benchmarkMode,
+            program.calculations.baseAccounts,
+            base.planSettings.accountScale,
             program.calculations.accounts,
             program.calculations.dealSize,
             standardBenchmarks.inMarket,
@@ -2707,6 +2843,7 @@
             period: program.period,
             priority: program.priority,
             priorityLabel: program.priorityLabel,
+            campaign: program.campaign,
             channels: program.channels,
             channelsText: program.channelsText,
             primaryContent: program.content,
