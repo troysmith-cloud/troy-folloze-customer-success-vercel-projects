@@ -34,11 +34,20 @@ export type SkillBoardState = Record<string, unknown> & {
 
 export type BoardState = SkillBoardState;
 
+export type BoardAccessLogEntry = {
+  email: string;
+  firstAccessedAt: string;
+  lastAccessedAt: string;
+  accessCount: number;
+  accessRole: 'owner' | 'shared';
+};
+
 export type BoardRecord = {
   id: string;
   ownerEmail: string;
   sharedEmails?: string[];
   follozeEditUrl?: string;
+  accessLog?: BoardAccessLogEntry[];
   title: string;
   customerName: string;
   createdAt: string;

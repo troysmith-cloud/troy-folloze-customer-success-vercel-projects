@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { getSession } from '../lib/auth';
 import { listBoards } from '../lib/storage';
 import { AccessManager } from './AccessManager';
+import { BoardAccessReport } from './BoardAccessReport';
 import { DeleteBoardButton } from './DeleteBoardButton';
 import { NewBoardForm } from './NewBoardForm';
 import { RenameBoardForm } from './RenameBoardForm';
@@ -44,6 +45,7 @@ export default async function DashboardPage() {
                       <>
                         <RenameBoardForm boardId={board.id} initialTitle={board.title} />
                         <AccessManager boardId={board.id} />
+                        <BoardAccessReport boardId={board.id} />
                       </>
                     ) : null}
                     <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />

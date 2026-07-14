@@ -241,6 +241,54 @@ button.danger {
   gap: 12px;
 }
 
+.access-report {
+  margin-top: 12px;
+  max-width: 760px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 10px 12px;
+}
+
+.access-report summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.access-report-table {
+  margin-top: 8px;
+  display: grid;
+  gap: 1px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.access-report-head,
+.access-report-row {
+  min-width: 640px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) 90px minmax(180px, 1fr) 70px;
+  gap: 10px;
+  padding: 9px 10px;
+  background: white;
+  align-items: center;
+  font-size: 13px;
+}
+
+.access-report-head {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
 .delete-board-control {
   margin-top: 10px;
   display: flex;

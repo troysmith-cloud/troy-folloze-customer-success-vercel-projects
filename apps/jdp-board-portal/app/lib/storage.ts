@@ -1,7 +1,7 @@
 import { del, get, list, put } from '@vercel/blob';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { BoardRecord, BoardSummary } from './types';
+import type { BoardAccessLogEntry, BoardRecord, BoardSummary } from './types';
 
 const LOCAL_DATA_DIR = path.join(process.cwd(), '.data');
 
@@ -118,6 +118,49 @@ export async function getOwnedBoard(email: string, boardId: string): Promise<Boa
   return normalized;
 }
 
+export async function recordBoardAccess(email: string, boardId: string) {
+  const record = await readJson<BoardRecord | null>(boardPath(boardId), null);
+  const board = normalizeBoard(record);
+  if (!board || !hasBoardAccess(board, email)) return null;
+  const normalizedEmail = normalizeEmail(email);
+  const now = new Date().toISOString();
+  const previous = board.accessLog?.find(entry => entry.email === normalizedEmail);
+  const nextEntry: BoardAccessLogEntry = {
+    email: normalizedEmail,
+    firstAccessedAt: previous?.firstAccessedAt || now,
+    lastAccessedAt: now,
+    accessCount: (previous?.accessCount || 0) + 1,
+    accessRole: board.ownerEmail === normalizedEmail ? 'owner' : 'shared'
+  };
+  board.accessLog = [
+    nextEntry,
+    ...(board.accessLog || []).filter(entry => entry.email !== normalizedEmail)
+  ].sort((a, b) => Date.parse(b.lastAccessedAt) - Date.parse(a.lastAccessedAt));
+  await writeJson(boardPath(board.id), board);
+  return board;
+}
+
+export async function getBoardAccessReport(ownerEmail: string, boardId: string) {
+  const board = await getOwnedBoard(ownerEmail, boardId);
+  if (!board) return null;
+  const logByEmail = new Map((board.accessLog || []).map(entry => [entry.email, entry]));
+  return accessEmails(board).map(email => {
+    const log = logByEmail.get(email);
+    return {
+      email,
+      accessRole: board.ownerEmail === email ? 'owner' as const : 'shared' as const,
+      firstAccessedAt: log?.firstAccessedAt || null,
+      lastAccessedAt: log?.lastAccessedAt || null,
+      accessCount: log?.accessCount || 0
+    };
+  }).sort((a, b) => {
+    if (!a.lastAccessedAt && !b.lastAccessedAt) return a.email.localeCompare(b.email);
+    if (!a.lastAccessedAt) return 1;
+    if (!b.lastAccessedAt) return -1;
+    return Date.parse(b.lastAccessedAt) - Date.parse(a.lastAccessedAt);
+  });
+}
+
 export async function saveBoard(record: BoardRecord) {
   record.ownerEmail = normalizeEmail(record.ownerEmail);
   record.sharedEmails = normalizeEmailList(record.sharedEmails).filter(email => email !== record.ownerEmail);
@@ -189,8 +232,21 @@ function normalizeBoard(record: BoardRecord | null): BoardRecord | null {
     ...record,
     ownerEmail: normalizeEmail(record.ownerEmail),
     sharedEmails: normalizeEmailList(record.sharedEmails).filter(email => email !== normalizeEmail(record.ownerEmail)),
-    follozeEditUrl: normalizeFollozeEditUrl(record.follozeEditUrl) || undefined
+    follozeEditUrl: normalizeFollozeEditUrl(record.follozeEditUrl) || undefined,
+    accessLog: normalizeAccessLog(record.accessLog)
   };
+}
+
+function normalizeAccessLog(entries: BoardAccessLogEntry[] = []) {
+  return entries
+    .map(entry => ({
+      email: normalizeEmail(entry.email || ''),
+      firstAccessedAt: entry.firstAccessedAt,
+      lastAccessedAt: entry.lastAccessedAt,
+      accessCount: Math.max(0, Number(entry.accessCount) || 0),
+      accessRole: entry.accessRole === 'owner' ? 'owner' as const : 'shared' as const
+    }))
+    .filter(entry => entry.email && entry.firstAccessedAt && entry.lastAccessedAt);
 }
 
 function hasBoardAccess(record: BoardRecord | null, email: string) {
