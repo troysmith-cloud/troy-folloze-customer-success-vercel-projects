@@ -40,9 +40,11 @@ export default async function DashboardPage() {
                     <div className="muted">
                       {board.customerName} · {board.accessRole === 'owner' ? 'Owner' : 'Shared access'} · Updated {new Date(board.updatedAt).toLocaleString()}
                     </div>
-                    <RenameBoardForm boardId={board.id} initialTitle={board.title} />
                     {board.accessRole === 'owner' ? (
-                      <AccessManager boardId={board.id} />
+                      <>
+                        <RenameBoardForm boardId={board.id} initialTitle={board.title} />
+                        <AccessManager boardId={board.id} />
+                      </>
                     ) : null}
                     <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />
                   </div>

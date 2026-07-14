@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireSession } from '../../../lib/auth';
-import { deleteAccessibleBoard, renameAccessibleBoard } from '../../../lib/storage';
+import { deleteAccessibleBoard, renameOwnedBoard } from '../../../lib/storage';
 
 const renameSchema = z.object({
   title: z.string().trim().min(1).max(160)
@@ -22,7 +22,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ bo
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid board title' }, { status: 400 });
   }
-  const board = await renameAccessibleBoard(session.email, boardId, parsed.data.title);
+  const board = await renameOwnedBoard(session.email, boardId, parsed.data.title);
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ ok: true, board });
 }

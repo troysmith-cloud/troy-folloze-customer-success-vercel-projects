@@ -173,8 +173,8 @@ export async function deleteAccessibleBoard(email: string, boardId: string) {
   return true;
 }
 
-export async function renameAccessibleBoard(email: string, boardId: string, title: string) {
-  const board = await getBoard(email, boardId);
+export async function renameOwnedBoard(ownerEmail: string, boardId: string, title: string) {
+  const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return null;
   const cleanTitle = title.trim();
   if (!cleanTitle) return null;
