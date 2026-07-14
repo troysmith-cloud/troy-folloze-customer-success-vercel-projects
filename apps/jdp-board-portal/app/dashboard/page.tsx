@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { getSession } from '../lib/auth';
 import { listBoards } from '../lib/storage';
 import { AccessManager } from './AccessManager';
+import { DeleteBoardButton } from './DeleteBoardButton';
 import { NewBoardForm } from './NewBoardForm';
 
 export default async function DashboardPage() {
@@ -38,7 +39,12 @@ export default async function DashboardPage() {
                     <div className="muted">
                       {board.customerName} · {board.accessRole === 'owner' ? 'Owner' : 'Shared access'} · Updated {new Date(board.updatedAt).toLocaleString()}
                     </div>
-                    {board.accessRole === 'owner' ? <AccessManager boardId={board.id} /> : null}
+                    {board.accessRole === 'owner' ? (
+                      <>
+                        <AccessManager boardId={board.id} />
+                        <DeleteBoardButton boardId={board.id} boardTitle={board.title} />
+                      </>
+                    ) : null}
                   </div>
                   <Link className="button primary" href={`/boards/${board.id}`}>Open</Link>
                 </div>

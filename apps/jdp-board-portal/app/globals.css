@@ -89,6 +89,12 @@ button, input, textarea, select {
   border: 1px solid var(--line);
 }
 
+button.danger {
+  color: #a31919;
+  background: #fff5f5;
+  border: 1px solid #ffd0d0;
+}
+
 .hero {
   padding: 72px 0 36px;
 }
@@ -202,6 +208,13 @@ button, input, textarea, select {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.delete-board-control {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .muted { color: var(--muted); }

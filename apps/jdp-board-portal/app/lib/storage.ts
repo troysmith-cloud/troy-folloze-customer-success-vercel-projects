@@ -1,5 +1,5 @@
-import { get, list, put } from '@vercel/blob';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { del, get, list, put } from '@vercel/blob';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { BoardRecord, BoardSummary } from './types';
 
@@ -60,6 +60,14 @@ async function writeJson(pathname: string, value: unknown) {
   await writeFile(filePath, content);
 }
 
+async function deleteJson(pathname: string) {
+  if (hasBlob()) {
+    await del(pathname).catch(() => undefined);
+    return;
+  }
+  await unlink(path.join(LOCAL_DATA_DIR, pathname)).catch(() => undefined);
+}
+
 export async function listBoards(email: string): Promise<BoardSummary[]> {
   const normalizedEmail = normalizeEmail(email);
   if (hasBlob()) {
@@ -108,6 +116,14 @@ export async function updateBoardAccess(ownerEmail: string, boardId: string, sha
   const removed = previousAccess.filter(email => !nextAccess.has(email));
   await Promise.all(removed.map(email => removeUserBoardSummary(email, board.id)));
   return board;
+}
+
+export async function deleteOwnedBoard(ownerEmail: string, boardId: string) {
+  const board = await getOwnedBoard(ownerEmail, boardId);
+  if (!board) return false;
+  await Promise.all(accessEmails(board).map(email => removeUserBoardSummary(email, board.id)));
+  await deleteJson(boardPath(board.id));
+  return true;
 }
 
 function normalizeBoard(record: BoardRecord | null): BoardRecord | null {
