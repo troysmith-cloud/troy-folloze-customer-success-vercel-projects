@@ -215,13 +215,17 @@ button.danger {
   color: var(--navy);
 }
 
+.access-panel input,
 .access-panel textarea {
   width: 100%;
-  min-height: 74px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
   color: var(--navy);
+}
+
+.access-panel textarea {
+  min-height: 74px;
   resize: vertical;
 }
 

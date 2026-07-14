@@ -44,7 +44,7 @@ export default async function DashboardPage() {
                     {board.accessRole === 'owner' ? (
                       <AccessManager boardId={board.id} />
                     ) : null}
-                    <DeleteBoardButton boardId={board.id} boardTitle={board.title} />
+                    <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />
                   </div>
                   <Link className="button primary" href={`/boards/${board.id}`}>Open</Link>
                 </div>

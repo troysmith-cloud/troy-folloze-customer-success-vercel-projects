@@ -25,6 +25,10 @@ function userIndexPath(email: string) {
   return `users/${safeEmail(normalizeEmail(email))}/boards.json`;
 }
 
+function userHiddenPath(email: string) {
+  return `users/${safeEmail(normalizeEmail(email))}/hidden.json`;
+}
+
 function boardPath(boardId: string) {
   return `boards/${boardId}.json`;
 }
@@ -70,18 +74,19 @@ async function deleteJson(pathname: string) {
 
 export async function listBoards(email: string): Promise<BoardSummary[]> {
   const normalizedEmail = normalizeEmail(email);
+  const hiddenBoards = new Set(await readJson<string[]>(userHiddenPath(normalizedEmail), []));
   if (hasBlob()) {
     const index = await readJson<BoardSummary[]>(userIndexPath(normalizedEmail), []);
-    if (index.length) return filterAccessibleSummaries(normalizedEmail, index);
+    if (index.length) return filterAccessibleSummaries(normalizedEmail, index, hiddenBoards);
     const result = await list({ prefix: 'boards/' });
     const boards = await Promise.all(result.blobs.map(async blob => {
       const record = await readJson<BoardRecord>(blob.pathname, null as unknown as BoardRecord);
-      return hasBoardAccess(record, normalizedEmail) ? toSummary(record, normalizedEmail) : null;
+      return !hiddenBoards.has(record?.id) && hasBoardAccess(record, normalizedEmail) ? toSummary(record, normalizedEmail) : null;
     }));
     return boards.filter(Boolean) as BoardSummary[];
   }
   const index = await readJson<BoardSummary[]>(userIndexPath(normalizedEmail), []);
-  return filterAccessibleSummaries(normalizedEmail, index);
+  return filterAccessibleSummaries(normalizedEmail, index, hiddenBoards);
 }
 
 export async function getBoard(email: string, boardId: string): Promise<BoardRecord | null> {
@@ -106,11 +111,17 @@ export async function saveBoard(record: BoardRecord) {
   await Promise.all(accessEmails(record).map(email => upsertUserBoardSummary(email, record)));
 }
 
-export async function updateBoardAccess(ownerEmail: string, boardId: string, sharedEmails: string[]) {
+export async function updateBoardAccess(ownerEmail: string, boardId: string, sharedEmails: string[], nextOwnerEmail?: string) {
   const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return null;
   const previousAccess = accessEmails(board);
-  board.sharedEmails = normalizeEmailList(sharedEmails).filter(email => email !== board.ownerEmail);
+  const currentOwner = board.ownerEmail;
+  const nextOwner = nextOwnerEmail ? normalizeEmail(nextOwnerEmail) : currentOwner;
+  board.ownerEmail = nextOwner;
+  board.sharedEmails = normalizeEmailList([
+    ...sharedEmails,
+    currentOwner === nextOwner ? '' : currentOwner
+  ]).filter(email => email && email !== board.ownerEmail);
   await saveBoard(board);
   const nextAccess = new Set(accessEmails(board));
   const removed = previousAccess.filter(email => !nextAccess.has(email));
@@ -129,7 +140,14 @@ export async function deleteOwnedBoard(ownerEmail: string, boardId: string) {
 export async function deleteAccessibleBoard(email: string, boardId: string) {
   const board = await getBoard(email, boardId);
   if (!board) return false;
-  await Promise.all(accessEmails(board).map(accessEmail => removeUserBoardSummary(accessEmail, board.id)));
+  if (board.ownerEmail !== normalizeEmail(email)) {
+    await hideBoardForUser(email, board.id);
+    return true;
+  }
+  await Promise.all(accessEmails(board).map(accessEmail => Promise.all([
+    removeUserBoardSummary(accessEmail, board.id),
+    removeHiddenBoard(accessEmail, board.id)
+  ])));
   await deleteJson(boardPath(board.id));
   return true;
 }
@@ -164,8 +182,25 @@ function accessEmails(record: BoardRecord) {
   return [record.ownerEmail, ...normalizeEmailList(record.sharedEmails)];
 }
 
-async function filterAccessibleSummaries(email: string, summaries: BoardSummary[]) {
+async function hideBoardForUser(email: string, boardId: string) {
+  const normalizedEmail = normalizeEmail(email);
+  const hidden = new Set(await readJson<string[]>(userHiddenPath(normalizedEmail), []));
+  hidden.add(boardId);
+  await Promise.all([
+    writeJson(userHiddenPath(normalizedEmail), Array.from(hidden)),
+    removeUserBoardSummary(normalizedEmail, boardId)
+  ]);
+}
+
+async function removeHiddenBoard(email: string, boardId: string) {
+  const normalizedEmail = normalizeEmail(email);
+  const hidden = await readJson<string[]>(userHiddenPath(normalizedEmail), []);
+  await writeJson(userHiddenPath(normalizedEmail), hidden.filter(id => id !== boardId));
+}
+
+async function filterAccessibleSummaries(email: string, summaries: BoardSummary[], hiddenBoards: Set<string>) {
   const checked = await Promise.all(summaries.map(async summary => {
+    if (hiddenBoards.has(summary.id)) return null;
     const board = await readJson<BoardRecord | null>(boardPath(summary.id), null);
     return hasBoardAccess(board, email) ? toSummary(board as BoardRecord, email) : null;
   }));

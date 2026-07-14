@@ -4,6 +4,7 @@ import { requireSession } from '../../../../lib/auth';
 import { getOwnedBoard, updateBoardAccess } from '../../../../lib/storage';
 
 const accessSchema = z.object({
+  ownerEmail: z.string().email().optional(),
   sharedEmails: z.array(z.string().email()).max(50)
 });
 
@@ -25,7 +26,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ boar
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid access list' }, { status: 400 });
   }
-  const board = await updateBoardAccess(session.email, boardId, parsed.data.sharedEmails);
+  const board = await updateBoardAccess(session.email, boardId, parsed.data.sharedEmails, parsed.data.ownerEmail);
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({
     ok: true,
