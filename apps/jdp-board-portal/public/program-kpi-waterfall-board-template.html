@@ -1610,6 +1610,8 @@
       selectedCsm,
       activeId,
       planSettings: { ...planSettings },
+      channelEditorOpen: { ...channelEditorOpen },
+      channelDrafts: Object.fromEntries(Object.entries(channelDrafts).map(([id, channels]) => [id, normalizeChannels(channels)])),
       programs: programs.map(program => ({
         ...program,
         channels: normalizeChannels(program.channels),
@@ -1688,6 +1690,24 @@
     persistState({ immediateRemote: true, keepalive: Boolean(options.keepalive) });
   }
 
+  function shouldAutosaveEvent(event) {
+    const target = event.target;
+    if (!target || typeof target.closest !== 'function') return false;
+    if (target.closest('[data-no-autosave]')) return false;
+    return Boolean(target.closest('main') || target.id === 'customerCsm');
+  }
+
+  function autosaveAfterInteraction(event, options = {}) {
+    if (restoringState || !shouldAutosaveEvent(event)) return;
+    setTimeout(() => {
+      if (options.flush) {
+        flushState();
+      } else {
+        persistStateDebounced();
+      }
+    }, 0);
+  }
+
   function applySavedState(state, source = 'local') {
     if (!state || !Array.isArray(state.programs)) return false;
     restoringState = true;
@@ -1695,8 +1715,12 @@
     planSettings = { ...planSettings, ...(state.planSettings || {}) };
     selectedCsm = state.selectedCsm || selectedCsm;
     activeId = programs.some(program => program.id === state.activeId) ? state.activeId : (programs[0] ? programs[0].id : null);
-    channelEditorOpen = {};
-    channelDrafts = {};
+    channelEditorOpen = state.channelEditorOpen && typeof state.channelEditorOpen === 'object'
+      ? Object.fromEntries(Object.entries(state.channelEditorOpen).map(([id, open]) => [id, Boolean(open)]))
+      : {};
+    channelDrafts = state.channelDrafts && typeof state.channelDrafts === 'object'
+      ? Object.fromEntries(Object.entries(state.channelDrafts).map(([id, channels]) => [id, normalizeChannels(channels)]))
+      : {};
     render();
     saveLocalState({ ...state, boardKey: boardStateKey(), updatedAt: state.updatedAt || new Date().toISOString() });
     safeAnalytic('state_restore', { text: `Board state restored from ${source}`, area: 'program planner', customerName: state.customerName || customerNameForSheet() });
@@ -2850,7 +2874,9 @@
       .replace(/'/g, '&#039;');
   }
 
-  document.addEventListener('change', () => flushState(), true);
+  document.addEventListener('input', event => autosaveAfterInteraction(event), false);
+  document.addEventListener('change', event => autosaveAfterInteraction(event, { flush: true }), false);
+  document.addEventListener('click', event => autosaveAfterInteraction(event, { flush: true }), false);
   window.addEventListener('pagehide', () => flushState({ keepalive: true }));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushState({ keepalive: true });
