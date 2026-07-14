@@ -178,6 +178,11 @@ button.danger {
   background: white;
 }
 
+.board-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .access-panel {
   margin-top: 12px;
   display: grid;

@@ -21,6 +21,22 @@ export function normalizeEmailList(emails: string[] = []) {
   return Array.from(new Set(emails.map(normalizeEmail).filter(Boolean)));
 }
 
+export function normalizeFollozeEditUrl(url?: string) {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:' || !isFollozeHost(parsed.hostname)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function isFollozeHost(hostname: string) {
+  return hostname === 'folloze.com' || hostname.endsWith('.folloze.com');
+}
+
 function userIndexPath(email: string) {
   return `users/${safeEmail(normalizeEmail(email))}/boards.json`;
 }
@@ -111,9 +127,11 @@ export async function saveBoard(record: BoardRecord) {
   await Promise.all(accessEmails(record).map(email => upsertUserBoardSummary(email, record)));
 }
 
-export async function updateBoardAccess(ownerEmail: string, boardId: string, sharedEmails: string[], nextOwnerEmail?: string) {
+export async function updateBoardAccess(ownerEmail: string, boardId: string, sharedEmails: string[], nextOwnerEmail?: string, follozeEditUrl?: string) {
   const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return null;
+  const normalizedFollozeEditUrl = follozeEditUrl === undefined ? undefined : normalizeFollozeEditUrl(follozeEditUrl);
+  if (normalizedFollozeEditUrl === null) return null;
   const previousAccess = accessEmails(board);
   const currentOwner = board.ownerEmail;
   const nextOwner = nextOwnerEmail ? normalizeEmail(nextOwnerEmail) : currentOwner;
@@ -122,6 +140,9 @@ export async function updateBoardAccess(ownerEmail: string, boardId: string, sha
     ...sharedEmails,
     currentOwner === nextOwner ? '' : currentOwner
   ]).filter(email => email && email !== board.ownerEmail);
+  if (normalizedFollozeEditUrl !== undefined) {
+    board.follozeEditUrl = normalizedFollozeEditUrl || undefined;
+  }
   await saveBoard(board);
   const nextAccess = new Set(accessEmails(board));
   const removed = previousAccess.filter(email => !nextAccess.has(email));
@@ -167,7 +188,8 @@ function normalizeBoard(record: BoardRecord | null): BoardRecord | null {
   return {
     ...record,
     ownerEmail: normalizeEmail(record.ownerEmail),
-    sharedEmails: normalizeEmailList(record.sharedEmails).filter(email => email !== normalizeEmail(record.ownerEmail))
+    sharedEmails: normalizeEmailList(record.sharedEmails).filter(email => email !== normalizeEmail(record.ownerEmail)),
+    follozeEditUrl: normalizeFollozeEditUrl(record.follozeEditUrl) || undefined
   };
 }
 
@@ -225,6 +247,7 @@ function toSummary(record: BoardRecord, viewerEmail: string): BoardSummary {
     title: record.title,
     customerName: record.customerName,
     updatedAt: record.updatedAt,
-    accessRole: normalizeEmail(record.ownerEmail) === normalizeEmail(viewerEmail) ? 'owner' : 'shared'
+    accessRole: normalizeEmail(record.ownerEmail) === normalizeEmail(viewerEmail) ? 'owner' : 'shared',
+    follozeEditUrl: record.follozeEditUrl
   };
 }

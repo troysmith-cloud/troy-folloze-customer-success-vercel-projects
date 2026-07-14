@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireSession } from '../../../../lib/auth';
-import { getOwnedBoard, updateBoardAccess } from '../../../../lib/storage';
+import { getOwnedBoard, normalizeFollozeEditUrl, updateBoardAccess } from '../../../../lib/storage';
 
 const accessSchema = z.object({
   ownerEmail: z.string().email().optional(),
-  sharedEmails: z.array(z.string().email()).max(50)
+  sharedEmails: z.array(z.string().email()).max(50),
+  follozeEditUrl: z.string().trim().max(500).optional()
 });
 
 export async function GET(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
@@ -15,7 +16,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({
     ownerEmail: board.ownerEmail,
-    sharedEmails: board.sharedEmails || []
+    sharedEmails: board.sharedEmails || [],
+    follozeEditUrl: board.follozeEditUrl || ''
   });
 }
 
@@ -26,11 +28,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ boar
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid access list' }, { status: 400 });
   }
-  const board = await updateBoardAccess(session.email, boardId, parsed.data.sharedEmails, parsed.data.ownerEmail);
+  const follozeEditUrl = normalizeFollozeEditUrl(parsed.data.follozeEditUrl);
+  if (follozeEditUrl === null) {
+    return NextResponse.json({ error: 'Use a valid HTTPS Folloze edit URL' }, { status: 400 });
+  }
+  const board = await updateBoardAccess(session.email, boardId, parsed.data.sharedEmails, parsed.data.ownerEmail, follozeEditUrl);
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({
     ok: true,
     ownerEmail: board.ownerEmail,
-    sharedEmails: board.sharedEmails || []
+    sharedEmails: board.sharedEmails || [],
+    follozeEditUrl: board.follozeEditUrl || ''
   });
 }

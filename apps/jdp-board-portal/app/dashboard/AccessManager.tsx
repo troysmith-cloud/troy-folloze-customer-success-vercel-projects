@@ -13,6 +13,7 @@ export function AccessManager({ boardId }: { boardId: string }) {
   const [ownerEmail, setOwnerEmail] = useState('');
   const [initialOwnerEmail, setInitialOwnerEmail] = useState('');
   const [emails, setEmails] = useState('');
+  const [follozeEditUrl, setFollozeEditUrl] = useState('');
   const [status, setStatus] = useState('Loading access...');
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export function AccessManager({ boardId }: { boardId: string }) {
         setOwnerEmail(data.ownerEmail || '');
         setInitialOwnerEmail(data.ownerEmail || '');
         setEmails((data.sharedEmails || []).join('\n'));
+        setFollozeEditUrl(data.follozeEditUrl || '');
         setStatus('Owner controls');
       })
       .catch(error => {
@@ -39,16 +41,17 @@ export function AccessManager({ boardId }: { boardId: string }) {
     const response = await fetch(`/api/boards/${boardId}/access`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ownerEmail, sharedEmails: parseEmails(emails) })
+      body: JSON.stringify({ ownerEmail, sharedEmails: parseEmails(emails), follozeEditUrl })
     });
     if (!response.ok) {
-      setStatus('Could not save access. Check each email address.');
+      setStatus('Could not save access. Check each email and Folloze URL.');
       return;
     }
     const data = await response.json();
     setOwnerEmail(data.ownerEmail || '');
     setInitialOwnerEmail(data.ownerEmail || '');
     setEmails((data.sharedEmails || []).join('\n'));
+    setFollozeEditUrl(data.follozeEditUrl || '');
     setStatus('Access saved');
     if (data.ownerEmail && data.ownerEmail !== initialOwnerEmail) {
       window.location.reload();
@@ -71,6 +74,14 @@ export function AccessManager({ boardId }: { boardId: string }) {
         value={emails}
         onChange={event => setEmails(event.target.value)}
         placeholder="customer@example.com"
+      />
+      <label htmlFor={`folloze-url-${boardId}`}>Folloze edit URL</label>
+      <input
+        id={`folloze-url-${boardId}`}
+        value={follozeEditUrl}
+        onChange={event => setFollozeEditUrl(event.target.value)}
+        placeholder="https://app.folloze.com/..."
+        type="url"
       />
       <div className="access-actions">
         <span className="status">{status}</span>

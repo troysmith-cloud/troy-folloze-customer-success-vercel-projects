@@ -38,6 +38,7 @@ export type BoardRecord = {
   id: string;
   ownerEmail: string;
   sharedEmails?: string[];
+  follozeEditUrl?: string;
   title: string;
   customerName: string;
   createdAt: string;
@@ -47,4 +48,5 @@ export type BoardRecord = {
 
 export type BoardSummary = Pick<BoardRecord, 'id' | 'title' | 'customerName' | 'updatedAt'> & {
   accessRole: 'owner' | 'shared';
+  follozeEditUrl?: string;
 };
