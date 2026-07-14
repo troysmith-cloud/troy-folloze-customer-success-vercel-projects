@@ -1467,7 +1467,7 @@
     pipeline: 0.50,
     close: 0.30
   };
-  const customerBenchmarkMode = 'Customer';
+  const customerBenchmarkMode = 'Custom';
 
   const programTypes = [
     '1:1 ABM',
@@ -1812,7 +1812,7 @@
   }
 
   function isCustomerBenchmarkMode(mode) {
-    return mode === customerBenchmarkMode || mode === 'Custom';
+    return mode === customerBenchmarkMode || mode === 'Custom' || mode === 'Customer';
   }
 
   function normalizeChannels(value) {
@@ -2287,7 +2287,7 @@
       </div>
       <div class="benchmarks">
         <div class="benchmark-head">
-          <h3>${isCustomerBenchmarkMode(program.mode) ? 'Customer benchmarks' : 'Standard benchmarks'}</h3>
+          <h3>${isCustomerBenchmarkMode(program.mode) ? 'Custom benchmarks' : 'Standard benchmarks'}</h3>
           <button class="ghost-btn" type="button" ${program.locked ? 'disabled' : ''} onclick="resetBenchmarks('${program.id}', this)">Reset to standard</button>
         </div>
         <div class="benchmark-grid">
@@ -2297,7 +2297,7 @@
           ${inputField(program, 'custom.pipeline', 'Pipeline %', Math.round(program.custom.pipeline * 100), 'number', { min: 0, step: 1 })}
           ${inputField(program, 'custom.close', 'Close %', Math.round(program.custom.close * 100), 'number', { min: 0, step: 1 })}
         </div>
-        <p class="hint">Editing any benchmark automatically switches Benchmark Mode to Customer. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.</p>
+        <p class="hint">Editing any benchmark automatically switches Benchmark Mode to Custom. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.</p>
       </div>
       <div class="actuals-panel">
         <h3>Actuals against projection</h3>
@@ -2633,8 +2633,8 @@
     const customerProgramHeaders = [
       'Program #', '+ Program Type', 'Program Name', 'Segment / Audience', 'Channels', 'Content / Messaging', 'Notes',
       'Benchmark Mode', 'Accounts Targeted', 'Avg Deal Size', 'Std In-Market %', 'Std Engage %', 'Std Meeting %',
-      'Std Pipeline %', 'Std Close %', 'Customer In-Market %', 'Customer Engage %', 'Customer Meeting %', 'Customer Pipeline %',
-      'Customer Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
+      'Std Pipeline %', 'Std Close %', 'Custom In-Market %', 'Custom Engage %', 'Custom Meeting %', 'Custom Pipeline %',
+      'Custom Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
       'Selected Close %', 'Accounts In Market', 'Engaged Accounts', 'Sales Meetings', 'Pipeline Opps', 'Closed Deals',
       'Pipeline Goal', 'Bookings', 'Quarter', 'Program Year', 'Projected Live Boards', 'Published Boards', 'Actual Engaged',
       'Actual Meetings', 'Actual Pipeline Opps', 'Actual Closed Deals', 'Actual Pipeline', 'Actual Bookings',
