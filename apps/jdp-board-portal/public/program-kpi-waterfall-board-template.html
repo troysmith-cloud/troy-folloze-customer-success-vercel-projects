@@ -416,7 +416,7 @@
   }
   .program-tab-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 8px;
     align-items: stretch;
   }
@@ -458,12 +458,36 @@
     border-color: var(--flz-navy);
     color: white;
   }
+  .program-tab.priority-1 { border-left: 7px solid #11d175; }
+  .program-tab.priority-2 { border-left: 7px solid #f3c84b; }
+  .program-tab.priority-3 { border-left: 7px solid #8b5cf6; }
+  .program-tab.priority-4 { border-left: 7px solid #0077ff; }
+  .program-tab.priority-5 { border-left: 7px solid #ff4d6d; }
   .program-tab strong {
     display: block;
     font-size: 15px;
     margin-bottom: 3px;
   }
   .program-tab small { font-weight: 700; opacity: .78; }
+  .priority-select {
+    border: 1px solid var(--flz-line);
+    border-radius: var(--radius);
+    padding: 0 8px;
+    min-width: 92px;
+    color: var(--flz-slate);
+    font-size: 12px;
+    font-weight: 900;
+  }
+  .priority-select.priority-1 { background: #e8fbf2; border-color: #11d175; color: #087a45; }
+  .priority-select.priority-2 { background: #fff8d8; border-color: #f3c84b; color: #745600; }
+  .priority-select.priority-3 { background: #f2edff; border-color: #8b5cf6; color: #5933b7; }
+  .priority-select.priority-4 { background: #eaf4ff; border-color: #0077ff; color: #0057bd; }
+  .priority-select.priority-5 { background: #fff0f3; border-color: #ff4d6d; color: #b31739; }
+  .priority-chip.priority-1 { background: #e8fbf2; border-color: #11d175; color: #087a45; }
+  .priority-chip.priority-2 { background: #fff8d8; border-color: #f3c84b; color: #745600; }
+  .priority-chip.priority-3 { background: #f2edff; border-color: #8b5cf6; color: #5933b7; }
+  .priority-chip.priority-4 { background: #eaf4ff; border-color: #0077ff; color: #0057bd; }
+  .priority-chip.priority-5 { background: #fff0f3; border-color: #ff4d6d; color: #b31739; }
   .delete-tab-btn {
     border: 1px solid #f3c6d8;
     background: #fff7fb;
@@ -473,7 +497,7 @@
     font-size: 12px;
     font-weight: 900;
   }
-  .program-tab[aria-selected="true"] + .delete-tab-btn {
+  .program-tab[aria-selected="true"] ~ .delete-tab-btn {
     border-color: rgba(255,255,255,.24);
     background: var(--flz-navy);
     color: white;
@@ -1468,6 +1492,7 @@
     close: 0.30
   };
   const customerBenchmarkMode = 'Custom';
+  const programPriorities = ['1', '2', '3', '4', '5'];
 
   const programTypes = [
     '1:1 ABM',
@@ -1636,6 +1661,7 @@
       secondaryContent: program.secondaryContent || '',
       notes: program.notes || '',
       locked: Boolean(program.locked),
+      priority: programPriorities.includes(String(program.priority)) ? String(program.priority) : '3',
       mode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
       accounts: Number(program.accounts) || 0,
       dealSize: Number(program.dealSize) || 0,
@@ -1813,6 +1839,18 @@
 
   function isCustomerBenchmarkMode(mode) {
     return mode === customerBenchmarkMode || mode === 'Custom' || mode === 'Customer';
+  }
+
+  function priorityValue(program) {
+    return programPriorities.includes(String(program.priority)) ? String(program.priority) : '3';
+  }
+
+  function priorityLabel(program) {
+    return `Priority ${priorityValue(program)}`;
+  }
+
+  function priorityClass(program) {
+    return `priority-${priorityValue(program)}`;
   }
 
   function normalizeChannels(value) {
@@ -1996,12 +2034,14 @@
     } else if (key === 'mode') {
       program.mode = isCustomerBenchmarkMode(value) ? customerBenchmarkMode : 'Standard';
       if (program.mode === 'Standard') program.custom = { ...standardBenchmarks };
+    } else if (key === 'priority') {
+      program.priority = programPriorities.includes(String(value)) ? String(value) : '3';
     } else if (key === 'accounts' || key === 'dealSize' || key === 'projectedBoards') {
       program[key] = Number(value);
     } else {
       program[key] = value;
     }
-    if (key === 'mode' || key.startsWith('custom.')) {
+    if (key === 'mode' || key === 'priority' || key.startsWith('custom.')) {
       renderEditor();
     }
     renderLiveOutputs();
@@ -2071,6 +2111,7 @@
       secondaryContent: seed.secondaryContent || '',
       notes: seed.notes || '',
       locked: Boolean(seed.locked),
+      priority: programPriorities.includes(String(seed.priority)) ? String(seed.priority) : '3',
       mode: isCustomerBenchmarkMode(seed.mode) ? customerBenchmarkMode : 'Standard',
       accounts: seed.accounts || 0,
       dealSize: seed.dealSize || 0,
@@ -2189,6 +2230,17 @@
     </div>`;
   }
 
+  function prioritySelectField(program) {
+    const id = `priority-${program.id}`;
+    const disabled = program.locked ? 'disabled' : '';
+    return `<div class="field">
+      <label for="${id}">Priority</label>
+      <select id="${id}" class="priority-select ${priorityClass(program)}" ${disabled} onchange="updateProgram('${program.id}', 'priority', this.value)">
+        ${programPriorities.map(priority => `<option value="${priority}" ${priorityValue(program) === priority ? 'selected' : ''}>Priority ${priority}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+
   function channelField(program) {
     const isOpen = Boolean(channelEditorOpen[program.id]) && !program.locked;
     const draft = isOpen ? normalizeChannels(channelDrafts[program.id] || program.channels) : normalizeChannels(program.channels);
@@ -2238,10 +2290,13 @@
       const c = calculate(program);
       return `<div class="program-tab-row" draggable="true" data-program-id="${program.id}" ondragstart="handleProgramDragStart(event, '${program.id}')" ondragend="handleProgramDragEnd(event)" ondragover="handleProgramDragOver(event)" ondragleave="handleProgramDragLeave(event)" ondrop="handleProgramDrop(event, '${program.id}')">
         <button class="drag-handle" type="button" aria-label="Drag ${escapeHtml(program.name || program.type)} to reorder" title="Drag to reorder">⋮⋮</button>
-        <button class="program-tab" type="button" role="tab" aria-selected="${program.id === activeId}" onclick="setActive('${program.id}', this)">
+        <button class="program-tab ${priorityClass(program)}" type="button" role="tab" aria-selected="${program.id === activeId}" onclick="setActive('${program.id}', this)">
           <strong>${index + 1}. ${escapeHtml(periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'))} · ${escapeHtml(program.type)}</strong>
-          <small>${escapeHtml(program.name || 'Unnamed program')} · ${money(c.pipelineGoal)} pipeline</small>
+          <small>${escapeHtml(program.name || 'Unnamed program')} · ${escapeHtml(priorityLabel(program))} · ${money(c.pipelineGoal)} pipeline</small>
         </button>
+        <select class="priority-select ${priorityClass(program)}" ${program.locked ? 'disabled' : ''} aria-label="Priority for ${escapeHtml(program.name || program.type)}" onchange="updateProgram('${program.id}', 'priority', this.value)">
+          ${programPriorities.map(priority => `<option value="${priority}" ${priorityValue(program) === priority ? 'selected' : ''}>P${priority}</option>`).join('')}
+        </select>
         <button class="delete-tab-btn" type="button" ${program.locked ? 'disabled' : ''} onclick="removeProgram('${program.id}', this)" aria-label="Delete ${escapeHtml(program.name || program.type)}">Delete</button>
       </div>`;
     }).join('');
@@ -2276,6 +2331,7 @@
         ${selectField(program, 'programYear', 'Program Year', String(program.programYear || planSettings.activeYear), programYears)}
         ${selectField(program, 'quarter', 'Quarter', program.quarter || 'Q1', quarters)}
         ${selectField(program, 'type', '+ Program Type', program.type, programTypes)}
+        ${prioritySelectField(program)}
         ${inputField(program, 'name', 'Program Name', program.name, 'text', { wide: true })}
         ${inputField(program, 'segment', 'Primary Segment/Audience', program.segment, 'text')}
         ${inputField(program, 'subSegment', 'Sub Category Segment/Audience', program.subSegment, 'text')}
@@ -2558,6 +2614,7 @@
           <h3>${escapeHtml(p.type)}${p.name ? ` · ${escapeHtml(p.name)}` : ''}</h3>
           <div class="meta">
             <span class="chip">CSM: ${escapeHtml(selectedCsm)}</span>
+            <span class="chip priority-chip ${priorityClass(p)}">${escapeHtml(priorityLabel(p))}</span>
             <span class="chip">${escapeHtml(isCustomerBenchmarkMode(p.mode) ? customerBenchmarkMode : 'Standard')} benchmarks</span>
             ${p.segment ? `<span class="chip">${escapeHtml(p.segment)}</span>` : ''}
             ${p.subSegment ? `<span class="chip">${escapeHtml(p.subSegment)}</span>` : ''}
@@ -2621,6 +2678,8 @@
         content: program.content,
         secondaryContent: program.secondaryContent,
         notes: program.notes,
+        priority: priorityValue(program),
+        priorityLabel: priorityLabel(program),
         benchmarkMode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
         assumptions: benchmarkFor(program),
         calculations: calculate(program)
@@ -2635,7 +2694,7 @@
   function sheetExportPayload() {
     const base = slideExportPayload();
     const customerProgramHeaders = [
-      'Program #', '+ Program Type', 'Program Name', 'Segment / Audience', 'Channels', 'Content / Messaging', 'Notes',
+      'Program #', 'Priority', '+ Program Type', 'Program Name', 'Segment / Audience', 'Channels', 'Content / Messaging', 'Notes',
       'Benchmark Mode', 'Accounts Targeted', 'Avg Deal Size', 'Std In-Market %', 'Std Engage %', 'Std Meeting %',
       'Std Pipeline %', 'Std Close %', 'Custom In-Market %', 'Custom Engage %', 'Custom Meeting %', 'Custom Pipeline %',
       'Custom Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
@@ -2658,6 +2717,7 @@
           headers: customerProgramHeaders,
           rows: base.programs.map(program => [
             program.index,
+            program.priorityLabel,
             program.type,
             program.name,
             [program.segment, program.subSegment].filter(Boolean).join(' / '),
@@ -2713,6 +2773,8 @@
             programYear: program.programYear,
             quarter: program.quarter,
             period: program.period,
+            priority: program.priority,
+            priorityLabel: program.priorityLabel,
             channels: program.channels,
             channelsText: program.channelsText,
             primaryContent: program.content,
