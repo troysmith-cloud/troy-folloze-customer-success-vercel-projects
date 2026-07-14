@@ -55,12 +55,13 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
     .replace('<span>Folloze Deployment Planning & Program Planner</span>', '<span>Folloze Deployment Planning & Program Planner</span>');
 
-  html = replaceFunction(html, 'remoteSaveState', 'persistState', `function remoteSaveState(snapshot) {
+  html = replaceFunction(html, 'remoteSaveState', 'persistState', `function remoteSaveState(snapshot, options = {}) {
     if (!canUseBoardStateEndpoint()) return;
     fetch(boardStateEndpoint, {
-      method: 'PUT',
+      method: options.keepalive ? 'POST' : 'PUT',
       credentials: 'same-origin',
       headers: { 'content-type': 'application/json' },
+      keepalive: Boolean(options.keepalive),
       body: JSON.stringify(snapshot)
     })
       .then(response => {
@@ -79,11 +80,8 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
       .then(response => response.ok ? response.json() : null)
       .then(response => {
         const remote = response && response.state;
-        if (!remote || !Array.isArray(remote.programs) || !remote.programs.length) return;
-        const local = JSON.parse(localStorage.getItem(boardStateKey()) || 'null');
-        const remoteUpdated = Date.parse(remote.updatedAt || 0);
-        const localUpdated = Date.parse(local && local.updatedAt ? local.updatedAt : 0);
-        if (!local || remoteUpdated >= localUpdated) applySavedState(remote, 'Vercel private storage');
+        if (!remote || !Array.isArray(remote.programs)) return;
+        applySavedState(remote, 'Vercel private storage');
       })
       .catch(error => {
         safeAnalytic('state_remote_load_error', { text: error.message || 'Shared state load failed', area: 'program planner' });

@@ -50,6 +50,10 @@ function boardPath(boardId: string) {
   return `boards/${boardId}.json`;
 }
 
+function boardAccessLogPath(boardId: string) {
+  return `boards/${boardId}.access.json`;
+}
+
 async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   if (hasBlob()) {
     const result = await get(pathname, { access: 'private', useCache: false }).catch(() => null);
@@ -125,7 +129,8 @@ export async function recordBoardAccess(email: string, boardId: string) {
   if (!board || !hasBoardAccess(board, email)) return null;
   const normalizedEmail = normalizeEmail(email);
   const now = new Date().toISOString();
-  const previous = board.accessLog?.find(entry => entry.email === normalizedEmail);
+  const accessLog = await readJson<BoardAccessLogEntry[]>(boardAccessLogPath(board.id), board.accessLog || []);
+  const previous = accessLog.find(entry => entry.email === normalizedEmail);
   const nextEntry: BoardAccessLogEntry = {
     email: normalizedEmail,
     firstAccessedAt: previous?.firstAccessedAt || now,
@@ -133,18 +138,19 @@ export async function recordBoardAccess(email: string, boardId: string) {
     accessCount: (previous?.accessCount || 0) + 1,
     accessRole: board.ownerEmail === normalizedEmail ? 'owner' : 'shared'
   };
-  board.accessLog = [
+  const nextLog = normalizeAccessLog([
     nextEntry,
-    ...(board.accessLog || []).filter(entry => entry.email !== normalizedEmail)
-  ].sort((a, b) => Date.parse(b.lastAccessedAt) - Date.parse(a.lastAccessedAt));
-  await writeJson(boardPath(board.id), board);
+    ...accessLog.filter(entry => entry.email !== normalizedEmail)
+  ]).sort((a, b) => Date.parse(b.lastAccessedAt) - Date.parse(a.lastAccessedAt));
+  await writeJson(boardAccessLogPath(board.id), nextLog);
   return board;
 }
 
 export async function getBoardAccessReport(ownerEmail: string, boardId: string) {
   const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return null;
-  const logByEmail = new Map((board.accessLog || []).map(entry => [entry.email, entry]));
+  const accessLog = await readJson<BoardAccessLogEntry[]>(boardAccessLogPath(board.id), board.accessLog || []);
+  const logByEmail = new Map(normalizeAccessLog(accessLog).map(entry => [entry.email, entry]));
   return accessEmails(board).map(email => {
     const log = logByEmail.get(email);
     return {
@@ -198,7 +204,7 @@ export async function deleteOwnedBoard(ownerEmail: string, boardId: string) {
   const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return false;
   await Promise.all(accessEmails(board).map(email => removeUserBoardSummary(email, board.id)));
-  await deleteJson(boardPath(board.id));
+  await Promise.all([deleteJson(boardPath(board.id)), deleteJson(boardAccessLogPath(board.id))]);
   return true;
 }
 
@@ -213,7 +219,7 @@ export async function deleteAccessibleBoard(email: string, boardId: string) {
     removeUserBoardSummary(accessEmail, board.id),
     removeHiddenBoard(accessEmail, board.id)
   ])));
-  await deleteJson(boardPath(board.id));
+  await Promise.all([deleteJson(boardPath(board.id)), deleteJson(boardAccessLogPath(board.id))]);
   return true;
 }
 

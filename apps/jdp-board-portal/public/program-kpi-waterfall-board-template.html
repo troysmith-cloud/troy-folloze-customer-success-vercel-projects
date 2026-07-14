@@ -1652,23 +1652,27 @@
     }
   }
 
-  function remoteSaveState(snapshot) {
+  function remoteSaveState(snapshot, options = {}) {
     if (!canUseBoardStateEndpoint()) return;
     const body = new URLSearchParams();
     body.set('action', 'save');
     body.set('boardKey', boardStateKey());
     body.set('payload', JSON.stringify(snapshot));
-    fetch(boardStateEndpoint, { method: 'POST', mode: 'no-cors', body }).catch(error => {
+    fetch(boardStateEndpoint, { method: 'POST', mode: 'no-cors', body, keepalive: Boolean(options.keepalive) }).catch(error => {
       safeAnalytic('state_remote_save_error', { text: error.message || 'Remote save failed', area: 'program planner' });
     });
   }
 
-  function persistState() {
+  function persistState(options = {}) {
     if (restoringState) return;
     const snapshot = stateSnapshot();
     saveLocalState(snapshot);
     clearTimeout(remoteStateTimer);
-    remoteStateTimer = setTimeout(() => remoteSaveState(snapshot), 900);
+    if (options.immediateRemote) {
+      remoteSaveState(snapshot, { keepalive: Boolean(options.keepalive) });
+    } else {
+      remoteStateTimer = setTimeout(() => remoteSaveState(snapshot), 900);
+    }
   }
 
   function persistStateDebounced() {
@@ -1677,13 +1681,20 @@
     stateSaveTimer = setTimeout(persistState, 350);
   }
 
+  function flushState(options = {}) {
+    if (restoringState) return;
+    clearTimeout(stateSaveTimer);
+    clearTimeout(remoteStateTimer);
+    persistState({ immediateRemote: true, keepalive: Boolean(options.keepalive) });
+  }
+
   function applySavedState(state, source = 'local') {
-    if (!state || !Array.isArray(state.programs) || !state.programs.length) return false;
+    if (!state || !Array.isArray(state.programs)) return false;
     restoringState = true;
     programs = state.programs.map(normalizeProgramState);
     planSettings = { ...planSettings, ...(state.planSettings || {}) };
     selectedCsm = state.selectedCsm || selectedCsm;
-    activeId = programs.some(program => program.id === state.activeId) ? state.activeId : programs[0].id;
+    activeId = programs.some(program => program.id === state.activeId) ? state.activeId : (programs[0] ? programs[0].id : null);
     channelEditorOpen = {};
     channelDrafts = {};
     render();
@@ -2838,6 +2849,12 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
+
+  document.addEventListener('change', () => flushState(), true);
+  window.addEventListener('pagehide', () => flushState({ keepalive: true }));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushState({ keepalive: true });
+  });
 
   if (!restoreLocalState()) render();
   loadRemoteState();

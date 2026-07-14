@@ -4,7 +4,7 @@ import { getSession } from '../../../../lib/auth';
 import { getBoard, saveBoard } from '../../../../lib/storage';
 
 const stateSchema = z.object({
-  programs: z.array(z.record(z.unknown())).min(1)
+  programs: z.array(z.record(z.unknown()))
 }).passthrough();
 
 export async function GET(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
@@ -17,6 +17,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
+  return saveBoardState(request, { params });
+}
+
+export async function POST(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
+  return saveBoardState(request, { params });
+}
+
+async function saveBoardState(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   const { boardId } = await params;
