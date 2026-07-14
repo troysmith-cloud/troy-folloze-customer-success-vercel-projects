@@ -21,7 +21,7 @@ export default async function DashboardPage() {
         <section className="hero">
           <h1>Your customer boards.</h1>
           <p>
-            Create a Folloze Joint Deployment Program board, share the hosted Vercel URL with the customer,
+            Create a Folloze Deployment Planning & Program Workspace, share the hosted Vercel URL with the customer,
             and keep their planning data tied to their email login.
           </p>
         </section>

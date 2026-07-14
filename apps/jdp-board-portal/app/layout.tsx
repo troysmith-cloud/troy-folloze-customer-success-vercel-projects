@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Folloze JDP Board Portal',
-  description: 'Hosted Folloze Joint Deployment Program boards with customer login and durable state.'
+  description: 'Hosted Folloze Deployment Planning & Program Workspaces with customer login and durable state.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

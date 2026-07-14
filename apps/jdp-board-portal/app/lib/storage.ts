@@ -1,6 +1,7 @@
 import { del, get, list, put } from '@vercel/blob';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { BOARD_WORKSPACE_TITLE } from './constants';
 import type { BoardAccessLogEntry, BoardRecord, BoardSummary } from './types';
 
 const LOCAL_DATA_DIR = path.join(process.cwd(), '.data');
@@ -233,8 +234,21 @@ function normalizeBoard(record: BoardRecord | null): BoardRecord | null {
     ownerEmail: normalizeEmail(record.ownerEmail),
     sharedEmails: normalizeEmailList(record.sharedEmails).filter(email => email !== normalizeEmail(record.ownerEmail)),
     follozeEditUrl: normalizeFollozeEditUrl(record.follozeEditUrl) || undefined,
-    accessLog: normalizeAccessLog(record.accessLog)
+    accessLog: normalizeAccessLog(record.accessLog),
+    title: normalizeBoardTitle(record.title, record.customerName)
   };
+}
+
+function normalizeBoardTitle(title: string, customerName: string) {
+  const cleanTitle = (title || '').trim();
+  const cleanCustomer = (customerName || '').trim();
+  if (
+    cleanTitle === 'Folloze Joint Deployment Program Template Board' ||
+    cleanTitle === `${cleanCustomer} Joint Deployment Program`
+  ) {
+    return BOARD_WORKSPACE_TITLE;
+  }
+  return cleanTitle || BOARD_WORKSPACE_TITLE;
 }
 
 function normalizeAccessLog(entries: BoardAccessLogEntry[] = []) {
