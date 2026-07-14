@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireSession } from '../../../../lib/auth';
+import { getSession } from '../../../../lib/auth';
 import { getBoard, saveBoard } from '../../../../lib/storage';
 
 const stateSchema = z.object({
@@ -8,7 +8,8 @@ const stateSchema = z.object({
 }).passthrough();
 
 export async function GET(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   const { boardId } = await params;
   const board = await getBoard(session.email, boardId);
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -16,7 +17,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   const { boardId } = await params;
   const board = await getBoard(session.email, boardId);
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });

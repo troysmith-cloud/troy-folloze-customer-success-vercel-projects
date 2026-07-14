@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireSession } from '../../lib/auth';
+import { getSession } from '../../lib/auth';
 import { createBoard } from '../../lib/defaults';
 import { listBoards, saveBoard } from '../../lib/storage';
 
@@ -10,12 +10,14 @@ const createSchema = z.object({
 });
 
 export async function GET() {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   return NextResponse.json({ boards: await listBoards(session.email) });
 }
 
 export async function POST(request: Request) {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   const parsed = createSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid customer name' }, { status: 400 });

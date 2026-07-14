@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireSession } from '../../../lib/auth';
+import { getSession } from '../../../lib/auth';
 import { deleteAccessibleBoard, renameOwnedBoard } from '../../../lib/storage';
 
 const renameSchema = z.object({
@@ -8,7 +8,8 @@ const renameSchema = z.object({
 });
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   const { boardId } = await params;
   const deleted = await deleteAccessibleBoard(session.email, boardId);
   if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -16,7 +17,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   const { boardId } = await params;
   const parsed = renameSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
