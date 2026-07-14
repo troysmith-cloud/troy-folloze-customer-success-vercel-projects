@@ -40,6 +40,7 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('SHEETS_OUTPUT_URL_PLACEHOLDER', '')
     .replace('SHEET_BUILDER_ENDPOINT_URL_PLACEHOLDER', '')
     .replace('BOARD_STATE_ENDPOINT_URL_PLACEHOLDER', stateEndpoint)
+    .replace('class="customer-placeholder"', isCongaBoard(board.customerName) ? 'class="customer-placeholder has-logo"' : 'class="customer-placeholder"')
     .replace('<div class="customer-logo-placeholder" aria-hidden="true"></div>', customerLogoMarkup)
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
     .replace('<span>Folloze Joint Deployment Program Template Board</span>', '<span>Folloze Joint Deployment Program Template Board</span>');
