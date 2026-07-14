@@ -1993,6 +1993,9 @@
         program.actual = program.actual || {};
         program.actual[subKey] = Number(value) || 0;
       }
+    } else if (key === 'mode') {
+      program.mode = isCustomerBenchmarkMode(value) ? customerBenchmarkMode : 'Standard';
+      if (program.mode === 'Standard') program.custom = { ...standardBenchmarks };
     } else if (key === 'accounts' || key === 'dealSize' || key === 'projectedBoards') {
       program[key] = Number(value);
     } else {
@@ -2377,6 +2380,7 @@
     if (!program) return;
     if (program.locked) return;
     program.custom = { ...standardBenchmarks };
+    program.mode = 'Standard';
     render();
     persistStateDebounced();
     flzAnalytic('cta_click', { text: button.innerText.trim(), area: 'program planner' }, button);
