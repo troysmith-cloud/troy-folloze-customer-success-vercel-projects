@@ -98,13 +98,13 @@ export async function listBoards(email: string): Promise<BoardSummary[]> {
   const hiddenBoards = new Set(await readJson<string[]>(userHiddenPath(normalizedEmail), []));
   if (hasBlob()) {
     const index = await readJson<BoardSummary[]>(userIndexPath(normalizedEmail), []);
-    if (index.length) return filterAccessibleSummaries(normalizedEmail, index, hiddenBoards);
-    const result = await list({ prefix: 'boards/' });
-    const boards = await Promise.all(result.blobs.map(async blob => {
-      const record = await readJson<BoardRecord>(blob.pathname, null as unknown as BoardRecord);
-      return !hiddenBoards.has(record?.id) && hasBoardAccess(record, normalizedEmail) ? toSummary(record, normalizedEmail) : null;
-    }));
-    return boards.filter(Boolean) as BoardSummary[];
+    const indexed = await filterAccessibleSummaries(normalizedEmail, index, hiddenBoards);
+    const discovered = await discoverAccessibleBoardSummaries(normalizedEmail, hiddenBoards);
+    const merged = mergeBoardSummaries(indexed, discovered);
+    if (merged.length !== indexed.length || merged.some((board, index) => board.id !== indexed[index]?.id)) {
+      await writeJson(userIndexPath(normalizedEmail), merged);
+    }
+    return merged;
   }
   const index = await readJson<BoardSummary[]>(userIndexPath(normalizedEmail), []);
   return filterAccessibleSummaries(normalizedEmail, index, hiddenBoards);
@@ -303,6 +303,29 @@ async function filterAccessibleSummaries(email: string, summaries: BoardSummary[
     return hasBoardAccess(board, email) ? toSummary(board as BoardRecord, email) : null;
   }));
   return checked.filter(Boolean) as BoardSummary[];
+}
+
+async function discoverAccessibleBoardSummaries(email: string, hiddenBoards: Set<string>) {
+  const result = await list({ prefix: 'boards/' });
+  const checked = await Promise.all(result.blobs.map(async blob => {
+    if (!blob.pathname.endsWith('.json') || blob.pathname.endsWith('.access.json')) return null;
+    const record = await readJson<BoardRecord | null>(blob.pathname, null);
+    return record && !hiddenBoards.has(record.id) && hasBoardAccess(record, email) ? toSummary(record, email) : null;
+  }));
+  return checked.filter(Boolean) as BoardSummary[];
+}
+
+function mergeBoardSummaries(...groups: BoardSummary[][]) {
+  const byId = new Map<string, BoardSummary>();
+  for (const group of groups) {
+    for (const board of group) {
+      const current = byId.get(board.id);
+      if (!current || Date.parse(board.updatedAt) >= Date.parse(current.updatedAt)) {
+        byId.set(board.id, board);
+      }
+    }
+  }
+  return Array.from(byId.values()).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 }
 
 async function upsertUserBoardSummary(email: string, record: BoardRecord) {
