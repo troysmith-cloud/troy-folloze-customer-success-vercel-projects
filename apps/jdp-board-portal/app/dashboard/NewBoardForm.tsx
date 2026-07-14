@@ -16,7 +16,7 @@ export function NewBoardForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus('Creating board...');
+    setStatus('Looking up the company and creating board...');
     const response = await fetch('/api/boards', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -41,6 +41,7 @@ export function NewBoardForm() {
           placeholder="Customer"
           required
         />
+        <span className="help-text">Use the company name. The board will look up the company and place its logo in the board header when a match is found.</span>
       </div>
       <div className="field">
         <label htmlFor="sharedEmails">Authorized customer emails</label>

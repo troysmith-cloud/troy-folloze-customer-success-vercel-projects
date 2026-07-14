@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '../../lib/auth';
+import { resolveCompanyBrand } from '../../lib/companyBrand';
 import { createBoard } from '../../lib/defaults';
 import { listBoards, saveBoard } from '../../lib/storage';
 
@@ -22,7 +23,8 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid customer name' }, { status: 400 });
   }
-  const board = createBoard(session.email, parsed.data.customerName, parsed.data.sharedEmails || []);
+  const brand = await resolveCompanyBrand(parsed.data.customerName);
+  const board = createBoard(session.email, parsed.data.customerName, parsed.data.sharedEmails || [], brand);
   await saveBoard(board);
-  return NextResponse.json({ id: board.id, board });
+  return NextResponse.json({ id: board.id, board, brandMatched: Boolean(brand) });
 }

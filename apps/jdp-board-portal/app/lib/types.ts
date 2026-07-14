@@ -47,6 +47,9 @@ export type BoardRecord = {
   ownerEmail: string;
   sharedEmails?: string[];
   follozeEditUrl?: string;
+  customerDomain?: string;
+  customerLogoUrl?: string;
+  customerLogoAlt?: string;
   accessLog?: BoardAccessLogEntry[];
   title: string;
   customerName: string;

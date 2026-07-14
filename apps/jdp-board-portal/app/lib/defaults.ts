@@ -1,6 +1,7 @@
 import type { BoardRecord, BoardState, Program } from './types';
 import { normalizeEmail, normalizeEmailList } from './storage';
 import { BOARD_PLANNER_TITLE } from './constants';
+import type { CompanyBrand } from './companyBrand';
 
 export const programTypes = [
   '1:1 ABM',
@@ -96,7 +97,7 @@ export function createDefaultState(): BoardState {
   };
 }
 
-export function createBoard(ownerEmail: string, customerName: string, sharedEmails: string[] = []): BoardRecord {
+export function createBoard(ownerEmail: string, customerName: string, sharedEmails: string[] = [], brand?: CompanyBrand | null): BoardRecord {
   const now = new Date().toISOString();
   const cleanCustomer = customerName.trim() || 'Customer';
   const owner = normalizeEmail(ownerEmail);
@@ -106,6 +107,9 @@ export function createBoard(ownerEmail: string, customerName: string, sharedEmai
     sharedEmails: normalizeEmailList(sharedEmails).filter(email => email !== owner),
     title: BOARD_PLANNER_TITLE,
     customerName: cleanCustomer,
+    customerDomain: brand?.domain,
+    customerLogoUrl: brand?.logoUrl,
+    customerLogoAlt: brand?.name ? `${brand.name} logo` : `${cleanCustomer} logo`,
     createdAt: now,
     updatedAt: now,
     state: {

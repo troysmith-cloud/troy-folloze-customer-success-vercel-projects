@@ -13,6 +13,10 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#039;');
 }
 
+function escapeAttribute(value: string) {
+  return escapeHtml(value);
+}
+
 function replaceFunction(source: string, functionName: string, beforeNextFunction: string, replacement: string) {
   const start = source.indexOf(`function ${functionName}`);
   const end = source.indexOf(`\n  function ${beforeNextFunction}`, start);
@@ -37,12 +41,26 @@ function customerLogoForBoard(board: BoardRecord) {
   return customerLogos.find(logo => logo.matches(board));
 }
 
+function savedCustomerLogoMarkup(board: BoardRecord) {
+  const url = (board.customerLogoUrl || '').trim();
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return null;
+    const alt = (board.customerLogoAlt || `${board.customerName} logo`).trim();
+    return `<img class="customer-logo" src="${escapeAttribute(parsed.toString())}" alt="${escapeAttribute(alt)}">`;
+  } catch {
+    return null;
+  }
+}
+
 export async function renderSkillBoardHtml(board: BoardRecord) {
   const customerName = escapeHtml(board.customerName);
   const stateEndpoint = `/api/boards/${encodeURIComponent(board.id)}/state`;
   let html = await readFile(TEMPLATE_PATH, 'utf8');
   const customerLogo = customerLogoForBoard(board);
-  const customerLogoMarkup = customerLogo?.markup || '<div class="customer-logo-placeholder" aria-hidden="true"></div>';
+  const customerLogoMarkup = savedCustomerLogoMarkup(board) || customerLogo?.markup || '<div class="customer-logo-placeholder" aria-hidden="true"></div>';
+  const hasCustomerLogo = customerLogoMarkup.includes('class="customer-logo"');
 
   html = html
     .replace('THEME_URL_PLACEHOLDER', 'data:text/css,')
@@ -50,7 +68,7 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('SHEETS_OUTPUT_URL_PLACEHOLDER', '')
     .replace('SHEET_BUILDER_ENDPOINT_URL_PLACEHOLDER', '')
     .replace('BOARD_STATE_ENDPOINT_URL_PLACEHOLDER', stateEndpoint)
-    .replace('class="customer-placeholder"', customerLogo ? 'class="customer-placeholder has-logo"' : 'class="customer-placeholder"')
+    .replace('class="customer-placeholder"', hasCustomerLogo ? 'class="customer-placeholder has-logo"' : 'class="customer-placeholder"')
     .replace('<div class="customer-logo-placeholder" aria-hidden="true"></div>', customerLogoMarkup)
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
     .replace('<span>Folloze Deployment Planning & Program Planner</span>', '<span>Folloze Deployment Planning & Program Planner</span>');
