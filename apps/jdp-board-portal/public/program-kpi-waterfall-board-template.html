@@ -2375,6 +2375,8 @@
     const caption = document.getElementById('pipelineWaterfallCaption');
     if (!image) return;
     const svg = buildPipelineWaterfallSvg(t);
+    image.setAttribute('width', '940');
+    image.setAttribute('height', '620');
     image.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     if (caption) {
       caption.textContent = `${whole.format(t.programs)} programs modeled across ${quarterSequence().join('-')} · ${whole.format(t.projectedBoards)} projected live boards · ${whole.format(t.actualLiveBoards)} published boards · ${money(t.pipelineGoal)} projected pipeline · ${money(t.actualPipelineGoal)} actual pipeline.`;
@@ -2409,7 +2411,7 @@
         <text x="${left + width + 20}" y="${y + 25}" fill="#071428" font-size="19" font-weight="900">${escapeHtml(stage.display)}</text>
         ${next}`;
     }).join('');
-    return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" viewBox="0 0 ${chartWidth} 620">
+    return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" width="${chartWidth}" height="620" viewBox="0 0 ${chartWidth} 620">
       <title id="title">Cumulative pipeline waterfall</title>
       <desc id="desc">Full-year cumulative program waterfall from accounts targeted to closed deals, pipeline, and bookings.</desc>
       <rect width="${chartWidth}" height="620" rx="24" fill="#f8fbfe"/>
@@ -2744,6 +2746,52 @@
     return `${base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}.pdf`;
   }
 
+  function waitForImageLoad(image) {
+    if (image.complete && image.naturalWidth) return Promise.resolve();
+    return new Promise(resolve => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  }
+
+  async function rasterizePipelineWaterfallForSnapshot() {
+    const image = document.getElementById('pipelineWaterfallImage');
+    if (!image || !image.src) return () => {};
+
+    const original = {
+      src: image.src,
+      width: image.getAttribute('width'),
+      height: image.getAttribute('height')
+    };
+    const source = new Image();
+    source.decoding = 'sync';
+    source.src = image.src;
+    await waitForImageLoad(source);
+
+    const width = source.naturalWidth || 940;
+    const height = source.naturalHeight || 620;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(source, 0, 0, width, height);
+
+    image.setAttribute('width', String(width));
+    image.setAttribute('height', String(height));
+    image.src = canvas.toDataURL('image/png');
+    await waitForImageLoad(image);
+
+    return () => {
+      image.src = original.src;
+      if (original.width === null) image.removeAttribute('width');
+      else image.setAttribute('width', original.width);
+      if (original.height === null) image.removeAttribute('height');
+      else image.setAttribute('height', original.height);
+    };
+  }
+
   function addCanvasSliceToPdf(pdf, canvas, sourceY, sourceHeight, pageWidth, pageHeight) {
     const slice = document.createElement('canvas');
     slice.width = canvas.width;
@@ -2795,8 +2843,10 @@
     document.body.classList.add('pdf-exporting');
     const originalScrollX = window.scrollX;
     const originalScrollY = window.scrollY;
+    let restorePipelineWaterfallImage = () => {};
     let canvas;
     try {
+      restorePipelineWaterfallImage = await rasterizePipelineWaterfallForSnapshot();
       window.scrollTo(0, 0);
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -2821,6 +2871,7 @@
       });
     } finally {
       window.scrollTo(originalScrollX, originalScrollY);
+      restorePipelineWaterfallImage();
       document.body.classList.remove('pdf-exporting');
     }
 
