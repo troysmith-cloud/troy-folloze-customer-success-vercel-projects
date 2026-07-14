@@ -1301,7 +1301,7 @@
       <div>
         <div class="eyebrow">Build. Activate. Signal.</div>
         <h1 id="hero-title">Plan your next 12 months program mix from engagement to pipeline.</h1>
-        <p>Use this waterfall model to plan programs by quarter. Add program sections, choose standard or custom benchmarks, and see quarterly, cumulative, and full-year impact update in real time. Reconcile programs with your actual data once a program is live to compare against projections.</p>
+        <p>Use this waterfall model to plan programs by quarter. Add program sections, choose standard or customer benchmarks, and see quarterly, cumulative, and full-year impact update in real time. Reconcile programs with your actual data once a program is live to compare against projections.</p>
         <div class="hero-actions">
           <a class="primary-btn" href="#add-program-section" onclick="return scrollToPrograms(this, event, 'main hero banner', 'cta_click')">Start planning</a>
           <a class="secondary-btn" href="#pipelineWaterfallImage" onclick="return viewWaterfallsImage(this, event)">View waterfalls</a>
@@ -1331,7 +1331,7 @@
       <div>
         <div class="eyebrow">Interactive model</div>
         <h2 id="planner-title">Build the year by quarter, tune benchmarks, model the waterfall.</h2>
-        <p>Each program works like a section in the spreadsheet and rolls into Q1, Q2, Q3, or Q4. Standard benchmarks are preloaded, and custom benchmarks can override the standard chain for any program.</p>
+        <p>Each program works like a section in the spreadsheet and rolls into Q1, Q2, Q3, or Q4. Standard benchmarks are preloaded, and customer benchmarks can override the standard chain for any program.</p>
       </div>
       <button class="primary-btn" type="button" onclick="addProgramFromButton(this)">+ Program type</button>
     </div>
@@ -1448,6 +1448,7 @@
     pipeline: 0.50,
     close: 0.30
   };
+  const customerBenchmarkMode = 'Customer';
 
   const programTypes = [
     '1:1 ABM',
@@ -1614,7 +1615,7 @@
       secondaryContent: program.secondaryContent || '',
       notes: program.notes || '',
       locked: Boolean(program.locked),
-      mode: program.mode === 'Custom' ? 'Custom' : 'Standard',
+      mode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
       accounts: Number(program.accounts) || 0,
       dealSize: Number(program.dealSize) || 0,
       projectedBoards: Number(program.projectedBoards) || 0,
@@ -1753,7 +1754,11 @@
   }
 
   function benchmarkFor(program) {
-    return program.mode === 'Custom' ? program.custom : standardBenchmarks;
+    return isCustomerBenchmarkMode(program.mode) ? program.custom : standardBenchmarks;
+  }
+
+  function isCustomerBenchmarkMode(mode) {
+    return mode === customerBenchmarkMode || mode === 'Custom';
   }
 
   function normalizeChannels(value) {
@@ -1929,6 +1934,7 @@
       const [group, subKey] = key.split('.');
       if (group === 'custom') {
         program.custom[subKey] = Number(value) / 100;
+        program.mode = customerBenchmarkMode;
       } else if (group === 'actual') {
         program.actual = program.actual || {};
         program.actual[subKey] = Number(value) || 0;
@@ -1938,7 +1944,7 @@
     } else {
       program[key] = value;
     }
-    if (key === 'mode') {
+    if (key === 'mode' || key.startsWith('custom.')) {
       renderEditor();
     }
     renderLiveOutputs();
@@ -2008,7 +2014,7 @@
       secondaryContent: seed.secondaryContent || '',
       notes: seed.notes || '',
       locked: Boolean(seed.locked),
-      mode: seed.mode || 'Standard',
+      mode: isCustomerBenchmarkMode(seed.mode) ? customerBenchmarkMode : 'Standard',
       accounts: seed.accounts || 0,
       dealSize: seed.dealSize || 0,
       projectedBoards: seed.projectedBoards || 0,
@@ -2219,7 +2225,7 @@
         ${channelField(program)}
         ${selectField(program, 'content', 'Primary Content / Messaging', program.content || 'Thought leadership', contentCategories)}
         ${selectField(program, 'secondaryContent', 'Secondary Content / Messaging', program.secondaryContent || 'Solution proof', contentCategories)}
-        ${selectField(program, 'mode', 'Benchmark Mode', program.mode, ['Standard', 'Custom'])}
+        ${selectField(program, 'mode', 'Benchmark Mode', isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard', ['Standard', customerBenchmarkMode])}
         ${inputField(program, 'accounts', 'Accounts Targeted', program.accounts, 'number', { min: 0, step: 1 })}
         ${inputField(program, 'dealSize', 'Average Deal Size', program.dealSize, 'number', { min: 0, step: 1000 })}
         ${inputField(program, 'projectedBoards', 'Projected Live Boards', program.projectedBoards || 0, 'number', { min: 0, step: 1 })}
@@ -2227,7 +2233,7 @@
       </div>
       <div class="benchmarks">
         <div class="benchmark-head">
-          <h3>${program.mode === 'Custom' ? 'Custom benchmarks' : 'Standard benchmarks'}</h3>
+          <h3>${isCustomerBenchmarkMode(program.mode) ? 'Customer benchmarks' : 'Standard benchmarks'}</h3>
           <button class="ghost-btn" type="button" ${program.locked ? 'disabled' : ''} onclick="resetBenchmarks('${program.id}', this)">Reset to standard</button>
         </div>
         <div class="benchmark-grid">
@@ -2237,7 +2243,7 @@
           ${inputField(program, 'custom.pipeline', 'Pipeline %', Math.round(program.custom.pipeline * 100), 'number', { min: 0, step: 1 })}
           ${inputField(program, 'custom.close', 'Close %', Math.round(program.custom.close * 100), 'number', { min: 0, step: 1 })}
         </div>
-        <p class="hint">Switch Benchmark Mode to Custom to use these values. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.</p>
+        <p class="hint">Editing any benchmark automatically switches Benchmark Mode to Customer. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.</p>
       </div>
       <div class="actuals-panel">
         <h3>Actuals against projection</h3>
@@ -2494,7 +2500,7 @@
           <h3>${escapeHtml(p.type)}${p.name ? ` · ${escapeHtml(p.name)}` : ''}</h3>
           <div class="meta">
             <span class="chip">CSM: ${escapeHtml(selectedCsm)}</span>
-            <span class="chip">${escapeHtml(p.mode)} benchmarks</span>
+            <span class="chip">${escapeHtml(isCustomerBenchmarkMode(p.mode) ? customerBenchmarkMode : 'Standard')} benchmarks</span>
             ${p.segment ? `<span class="chip">${escapeHtml(p.segment)}</span>` : ''}
             ${p.subSegment ? `<span class="chip">${escapeHtml(p.subSegment)}</span>` : ''}
             ${normalizeChannels(p.channels).map(channel => `<span class="chip">${escapeHtml(channel)}</span>`).join('')}
@@ -2557,7 +2563,7 @@
         content: program.content,
         secondaryContent: program.secondaryContent,
         notes: program.notes,
-        benchmarkMode: program.mode,
+        benchmarkMode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
         assumptions: benchmarkFor(program),
         calculations: calculate(program)
       }))
@@ -2573,8 +2579,8 @@
     const customerProgramHeaders = [
       'Program #', '+ Program Type', 'Program Name', 'Segment / Audience', 'Channels', 'Content / Messaging', 'Notes',
       'Benchmark Mode', 'Accounts Targeted', 'Avg Deal Size', 'Std In-Market %', 'Std Engage %', 'Std Meeting %',
-      'Std Pipeline %', 'Std Close %', 'Custom In-Market %', 'Custom Engage %', 'Custom Meeting %', 'Custom Pipeline %',
-      'Custom Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
+      'Std Pipeline %', 'Std Close %', 'Customer In-Market %', 'Customer Engage %', 'Customer Meeting %', 'Customer Pipeline %',
+      'Customer Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
       'Selected Close %', 'Accounts In Market', 'Engaged Accounts', 'Sales Meetings', 'Pipeline Opps', 'Closed Deals',
       'Pipeline Goal', 'Bookings', 'Quarter', 'Program Year', 'Projected Live Boards', 'Published Boards', 'Actual Engaged',
       'Actual Meetings', 'Actual Pipeline Opps', 'Actual Closed Deals', 'Actual Pipeline', 'Actual Bookings',
@@ -2608,11 +2614,11 @@
             standardBenchmarks.meeting,
             standardBenchmarks.pipeline,
             standardBenchmarks.close,
-            program.benchmarkMode === 'Custom' ? program.assumptions.inMarket : '',
-            program.benchmarkMode === 'Custom' ? program.assumptions.engaged : '',
-            program.benchmarkMode === 'Custom' ? program.assumptions.meeting : '',
-            program.benchmarkMode === 'Custom' ? program.assumptions.pipeline : '',
-            program.benchmarkMode === 'Custom' ? program.assumptions.close : '',
+            isCustomerBenchmarkMode(program.benchmarkMode) ? program.assumptions.inMarket : '',
+            isCustomerBenchmarkMode(program.benchmarkMode) ? program.assumptions.engaged : '',
+            isCustomerBenchmarkMode(program.benchmarkMode) ? program.assumptions.meeting : '',
+            isCustomerBenchmarkMode(program.benchmarkMode) ? program.assumptions.pipeline : '',
+            isCustomerBenchmarkMode(program.benchmarkMode) ? program.assumptions.close : '',
             program.assumptions.inMarket,
             program.assumptions.engaged,
             program.assumptions.meeting,
