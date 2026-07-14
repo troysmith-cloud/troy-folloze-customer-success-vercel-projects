@@ -1,1 +1,1 @@
-export const BOARD_WORKSPACE_TITLE = 'Folloze Deployment Planning & Program Workspace';
+export const BOARD_PLANNER_TITLE = 'Folloze Deployment Planning & Program Planner';

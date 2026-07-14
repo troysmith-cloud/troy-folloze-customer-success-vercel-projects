@@ -1,7 +1,7 @@
 import { del, get, list, put } from '@vercel/blob';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BOARD_WORKSPACE_TITLE } from './constants';
+import { BOARD_PLANNER_TITLE } from './constants';
 import type { BoardAccessLogEntry, BoardRecord, BoardSummary } from './types';
 
 const LOCAL_DATA_DIR = path.join(process.cwd(), '.data');
@@ -246,9 +246,9 @@ function normalizeBoardTitle(title: string, customerName: string) {
     cleanTitle === 'Folloze Joint Deployment Program Template Board' ||
     cleanTitle === `${cleanCustomer} Joint Deployment Program`
   ) {
-    return BOARD_WORKSPACE_TITLE;
+    return BOARD_PLANNER_TITLE;
   }
-  return cleanTitle || BOARD_WORKSPACE_TITLE;
+  return cleanTitle || BOARD_PLANNER_TITLE;
 }
 
 function normalizeAccessLog(entries: BoardAccessLogEntry[] = []) {

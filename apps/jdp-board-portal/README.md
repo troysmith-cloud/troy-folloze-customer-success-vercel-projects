@@ -1,6 +1,6 @@
 # Folloze JDP Board Portal
 
-Vercel-hosted customer portal for Folloze Deployment Planning & Program Workspaces.
+Vercel-hosted customer portal for Folloze Deployment Planning & Program Planners.
 
 ## What It Provides
 

@@ -1,6 +1,6 @@
 import type { BoardRecord, BoardState, Program } from './types';
 import { normalizeEmail, normalizeEmailList } from './storage';
-import { BOARD_WORKSPACE_TITLE } from './constants';
+import { BOARD_PLANNER_TITLE } from './constants';
 
 export const programTypes = [
   '1:1 ABM',
@@ -104,7 +104,7 @@ export function createBoard(ownerEmail: string, customerName: string, sharedEmai
     id: crypto.randomUUID(),
     ownerEmail: owner,
     sharedEmails: normalizeEmailList(sharedEmails).filter(email => email !== owner),
-    title: BOARD_WORKSPACE_TITLE,
+    title: BOARD_PLANNER_TITLE,
     customerName: cleanCustomer,
     createdAt: now,
     updatedAt: now,

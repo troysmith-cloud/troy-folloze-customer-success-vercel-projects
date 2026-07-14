@@ -43,7 +43,7 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('class="customer-placeholder"', isCongaBoard(board.customerName) ? 'class="customer-placeholder has-logo"' : 'class="customer-placeholder"')
     .replace('<div class="customer-logo-placeholder" aria-hidden="true"></div>', customerLogoMarkup)
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
-    .replace('<span>Folloze Deployment Planning & Program Workspace</span>', '<span>Folloze Deployment Planning & Program Workspace</span>');
+    .replace('<span>Folloze Deployment Planning & Program Planner</span>', '<span>Folloze Deployment Planning & Program Planner</span>');
 
   html = replaceFunction(html, 'remoteSaveState', 'persistState', `function remoteSaveState(snapshot) {
     if (!canUseBoardStateEndpoint()) return;
