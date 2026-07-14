@@ -524,6 +524,13 @@
     color: var(--flz-muted);
     font-weight: 700;
   }
+  .lock-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
   .lock-switch {
     display: inline-flex;
     align-items: center;
@@ -1444,6 +1451,8 @@
   const sheetsOutputUrl = 'SHEETS_OUTPUT_URL_PLACEHOLDER';
   const sheetBuilderEndpoint = 'SHEET_BUILDER_ENDPOINT_URL_PLACEHOLDER';
   const boardStateEndpoint = 'BOARD_STATE_ENDPOINT_URL_PLACEHOLDER';
+  const boardViewerEmail = 'BOARD_VIEWER_EMAIL_PLACEHOLDER';
+  const boardOwnerEmail = 'BOARD_OWNER_EMAIL_PLACEHOLDER';
   const sheetTemplateUrl = 'https://docs.google.com/spreadsheets/d/1IQNrquCt4rRdaUcSAiUvMLf1Icu6YOzuikSQLYpIvyQ/edit';
   let stateSaveTimer = null;
   let remoteStateTimer = null;
@@ -1467,6 +1476,52 @@
 
   function canUseBoardStateEndpoint() {
     return Boolean(boardStateEndpoint && !boardStateEndpoint.includes('PLACEHOLDER'));
+  }
+
+  function normalizeEmailValue(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function currentViewerEmail() {
+    return normalizeEmailValue(boardViewerEmail.includes('PLACEHOLDER') ? '' : boardViewerEmail);
+  }
+
+  function currentOwnerEmail() {
+    return normalizeEmailValue(boardOwnerEmail.includes('PLACEHOLDER') ? '' : boardOwnerEmail);
+  }
+
+  function isBoardOwner() {
+    const viewer = currentViewerEmail();
+    const owner = currentOwnerEmail();
+    return Boolean(viewer && owner && viewer === owner);
+  }
+
+  function programCreatorEmail(program) {
+    return normalizeEmailValue(program.createdByEmail || currentOwnerEmail() || currentViewerEmail());
+  }
+
+  function isProgramCreator(program) {
+    const viewer = currentViewerEmail();
+    return Boolean(viewer && viewer === programCreatorEmail(program));
+  }
+
+  function canEditProgram(program) {
+    if (!program) return false;
+    if (program.locked) return false;
+    if (!currentViewerEmail()) return true;
+    return Boolean(program.allowAnyoneEdit || isBoardOwner() || isProgramCreator(program));
+  }
+
+  function canManageProgramAccess(program) {
+    return Boolean(program && isBoardOwner());
+  }
+
+  function programAccessLabel(program) {
+    if (program.allowAnyoneEdit) return 'Anyone with access can edit this program.';
+    const creator = programCreatorEmail(program);
+    if (isBoardOwner()) return creator ? `Only the owner and ${creator} can edit.` : 'Only the owner can edit.';
+    if (isProgramCreator(program)) return 'Only you and the board owner can edit this program.';
+    return 'View only: only the creator or board owner can edit this program.';
   }
 
   function stateSnapshot() {
@@ -1503,6 +1558,8 @@
       secondaryContent: program.secondaryContent || '',
       notes: program.notes || '',
       locked: Boolean(program.locked),
+      createdByEmail: normalizeEmailValue(program.createdByEmail || currentOwnerEmail() || currentViewerEmail()),
+      allowAnyoneEdit: Boolean(program.allowAnyoneEdit),
       priority: programPriorities.includes(String(program.priority)) ? String(program.priority) : '3',
       mode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
       accounts: Number(program.accounts) || 0,
@@ -1856,6 +1913,24 @@
   function updateProgram(id, key, value) {
     const program = programs.find(p => p.id === id);
     if (!program) return;
+    if (key === 'allowAnyoneEdit') {
+      if (!canManageProgramAccess(program)) return;
+      program.allowAnyoneEdit = value === true || value === 'true';
+      render();
+      persistStateDebounced();
+      safeAnalytic('program_access_toggle', { text: program.allowAnyoneEdit ? 'Allow anyone to edit program' : 'Restrict program editing', area: 'program planner', value: String(program.allowAnyoneEdit) });
+      return;
+    }
+    if (!canEditProgram(program) && key !== 'locked') {
+      safeAnalytic('program_edit_blocked', { text: key, area: 'program planner', value: String(value) });
+      renderEditor();
+      return;
+    }
+    if (key === 'locked' && !(isBoardOwner() || isProgramCreator(program))) {
+      safeAnalytic('program_lock_blocked', { text: program.name || program.type, area: 'program planner' });
+      renderEditor();
+      return;
+    }
     if (program.locked && key !== 'locked') return;
     if (key === 'locked') {
       program.locked = value === true || value === 'true';
@@ -1900,7 +1975,7 @@
 
   function openChannelEditor(id) {
     const program = programs.find(p => p.id === id);
-    if (!program || program.locked) return;
+    if (!program || !canEditProgram(program)) return;
     channelEditorOpen[id] = true;
     channelDrafts[id] = normalizeChannels(program.channels);
     renderEditor();
@@ -1909,7 +1984,7 @@
 
   function toggleDraftChannel(id, channel, checked) {
     const program = programs.find(p => p.id === id);
-    if (!program || program.locked) return;
+    if (!program || !canEditProgram(program)) return;
     const selected = new Set(channelDrafts[id] || normalizeChannels(program.channels));
     if (checked) {
       selected.add(channel);
@@ -1922,7 +1997,7 @@
 
   function submitChannels(id) {
     const program = programs.find(p => p.id === id);
-    if (!program || program.locked) return;
+    if (!program || !canEditProgram(program)) return;
     program.channels = normalizeChannels(channelDrafts[id] || program.channels);
     channelEditorOpen[id] = false;
     delete channelDrafts[id];
@@ -1953,6 +2028,8 @@
       secondaryContent: seed.secondaryContent || '',
       notes: seed.notes || '',
       locked: Boolean(seed.locked),
+      createdByEmail: normalizeEmailValue(seed.createdByEmail || currentViewerEmail() || currentOwnerEmail()),
+      allowAnyoneEdit: Boolean(seed.allowAnyoneEdit),
       priority: programPriorities.includes(String(seed.priority)) ? String(seed.priority) : '3',
       mode: isCustomerBenchmarkMode(seed.mode) ? customerBenchmarkMode : 'Standard',
       accounts: seed.accounts || 0,
@@ -1977,7 +2054,8 @@
     flzAnalytic('cta_click', { text: button.innerText.trim(), area: 'program planner' }, button);
     const active = programs.find(p => p.id === activeId);
     if (!active) return;
-    addProgram({ ...active, name: `${active.name} copy`, custom: { ...active.custom } });
+    if (!canEditProgram(active)) return;
+    addProgram({ ...active, name: `${active.name} copy`, createdByEmail: currentViewerEmail() || currentOwnerEmail(), allowAnyoneEdit: false, custom: { ...active.custom } });
   }
 
   function reorderPrograms(draggedId, targetId) {
@@ -2021,7 +2099,7 @@
 
   function removeProgram(id, button) {
     const doomed = programs.find(p => p.id === id);
-    if (!doomed || doomed.locked) {
+    if (!doomed || !canEditProgram(doomed)) {
       safeAnalytic('program_remove_blocked', { text: doomed ? doomed.name : 'program', area: 'program planner' }, button);
       return;
     }
@@ -2045,7 +2123,7 @@
   function inputField(program, key, label, value, type = 'text', opts = {}) {
     const id = `${key.replace('.', '-')}-${program.id}`;
     const attr = type === 'number' ? `inputmode="decimal" min="${opts.min ?? 0}" step="${opts.step ?? 1}"` : '';
-    const disabled = program.locked ? 'disabled' : '';
+    const disabled = canEditProgram(program) ? '' : 'disabled';
     return `<div class="${opts.wide ? 'wide-field' : 'field'}">
       <label for="${id}">${label}</label>
       <input id="${id}" type="${type}" ${attr} ${disabled} value="${escapeHtml(value ?? '')}" oninput="updateProgram('${program.id}', '${key}', this.value)">
@@ -2054,7 +2132,7 @@
 
   function textareaField(program, key, label, value) {
     const id = `${key}-${program.id}`;
-    const disabled = program.locked ? 'disabled' : '';
+    const disabled = canEditProgram(program) ? '' : 'disabled';
     return `<div class="wide-field">
       <label for="${id}">${label}</label>
       <textarea id="${id}" ${disabled} oninput="updateProgram('${program.id}', '${key}', this.value)">${escapeHtml(value ?? '')}</textarea>
@@ -2063,7 +2141,7 @@
 
   function selectField(program, key, label, value, choices, opts = {}) {
     const id = `${key}-${program.id}`;
-    const disabled = program.locked ? 'disabled' : '';
+    const disabled = canEditProgram(program) ? '' : 'disabled';
     return `<div class="${opts.wide ? 'wide-field' : 'field'}">
       <label for="${id}">${label}</label>
       <select id="${id}" ${disabled} onchange="updateProgram('${program.id}', '${key}', this.value)">
@@ -2074,7 +2152,7 @@
 
   function prioritySelectField(program) {
     const id = `priority-${program.id}`;
-    const disabled = program.locked ? 'disabled' : '';
+    const disabled = canEditProgram(program) ? '' : 'disabled';
     return `<div class="field">
       <label for="${id}">Priority</label>
       <select id="${id}" class="priority-select ${priorityClass(program)}" ${disabled} onchange="updateProgram('${program.id}', 'priority', this.value)">
@@ -2084,11 +2162,11 @@
   }
 
   function channelField(program) {
-    const isOpen = Boolean(channelEditorOpen[program.id]) && !program.locked;
+    const isOpen = Boolean(channelEditorOpen[program.id]) && canEditProgram(program);
     const draft = isOpen ? normalizeChannels(channelDrafts[program.id] || program.channels) : normalizeChannels(program.channels);
     const selected = new Set(draft);
-    const disabled = program.locked ? 'disabled' : '';
-    const buttonDisabled = program.locked ? 'disabled' : '';
+    const disabled = canEditProgram(program) ? '' : 'disabled';
+    const buttonDisabled = canEditProgram(program) ? '' : 'disabled';
     return `<div class="wide-field">
       <label>Channels</label>
       <div class="channel-picker">
@@ -2136,10 +2214,10 @@
           <strong>${index + 1}. ${escapeHtml(periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'))} · ${escapeHtml(program.type)}</strong>
           <small>${escapeHtml(program.name || 'Unnamed program')} · ${escapeHtml(priorityLabel(program))} · ${money(c.pipelineGoal)} pipeline</small>
         </button>
-        <select class="priority-select ${priorityClass(program)}" ${program.locked ? 'disabled' : ''} aria-label="Priority for ${escapeHtml(program.name || program.type)}" onchange="updateProgram('${program.id}', 'priority', this.value)">
+        <select class="priority-select ${priorityClass(program)}" ${canEditProgram(program) ? '' : 'disabled'} aria-label="Priority for ${escapeHtml(program.name || program.type)}" onchange="updateProgram('${program.id}', 'priority', this.value)">
           ${programPriorities.map(priority => `<option value="${priority}" ${priorityValue(program) === priority ? 'selected' : ''}>P${priority}</option>`).join('')}
         </select>
-        <button class="delete-tab-btn" type="button" ${program.locked ? 'disabled' : ''} onclick="removeProgram('${program.id}', this)" aria-label="Delete ${escapeHtml(program.name || program.type)}">Delete</button>
+        <button class="delete-tab-btn" type="button" ${canEditProgram(program) ? '' : 'disabled'} onclick="removeProgram('${program.id}', this)" aria-label="Delete ${escapeHtml(program.name || program.type)}">Delete</button>
       </div>`;
     }).join('');
   }
@@ -2158,16 +2236,26 @@
     const c = calculate(program);
     const actual = c.actual;
     const maxStage = Math.max(c.accounts, c.inMarket, c.engaged, c.meetings, c.pipelineOpps, c.closedDeals, 1);
+    const canEdit = canEditProgram(program);
+    const canToggleLock = isBoardOwner() || isProgramCreator(program);
+    const ownerAccessControl = canManageProgramAccess(program) ? `
+        <label class="lock-switch" for="allow-edit-${program.id}">
+          <input id="allow-edit-${program.id}" type="checkbox" ${program.allowAnyoneEdit ? 'checked' : ''} onchange="updateProgram('${program.id}', 'allowAnyoneEdit', this.checked)">
+          ${program.allowAnyoneEdit ? 'Anyone can edit' : 'Owner/creator only'}
+        </label>` : '';
     document.getElementById('programEditor').innerHTML = `
       <div class="lock-toggle">
         <div>
-          <span>${program.locked ? 'Program locked' : 'Program unlocked'}</span>
-          <small>${program.locked ? 'Unlock to edit this program.' : 'Lock to prevent accidental edits.'}</small>
+          <span>${program.locked ? 'Program locked' : (canEdit ? 'Program editable' : 'Program view only')}</span>
+          <small>${escapeHtml(programAccessLabel(program))}${program.locked ? ' Unlock to edit this program.' : ''}</small>
         </div>
-        <label class="lock-switch" for="locked-${program.id}">
-          <input id="locked-${program.id}" type="checkbox" ${program.locked ? 'checked' : ''} onchange="updateProgram('${program.id}', 'locked', this.checked)">
-          ${program.locked ? 'Locked' : 'Unlocked'}
-        </label>
+        <div class="lock-actions">
+          <label class="lock-switch" for="locked-${program.id}">
+            <input id="locked-${program.id}" type="checkbox" ${program.locked ? 'checked' : ''} ${canToggleLock ? '' : 'disabled'} onchange="updateProgram('${program.id}', 'locked', this.checked)">
+            ${program.locked ? 'Locked' : 'Unlocked'}
+          </label>
+          ${ownerAccessControl}
+        </div>
       </div>
       <div class="editor-grid">
         ${selectField(program, 'programYear', 'Program Year', String(program.programYear || planSettings.activeYear), programYears)}
@@ -2189,7 +2277,7 @@
       <div class="benchmarks">
         <div class="benchmark-head">
           <h3>${isCustomerBenchmarkMode(program.mode) ? 'Custom benchmarks' : 'Standard benchmarks'}</h3>
-          <button class="ghost-btn" type="button" ${program.locked ? 'disabled' : ''} onclick="resetBenchmarks('${program.id}', this)">Reset to standard</button>
+          <button class="ghost-btn" type="button" ${canEdit ? '' : 'disabled'} onclick="resetBenchmarks('${program.id}', this)">Reset to standard</button>
         </div>
         <div class="benchmark-grid">
           ${inputField(program, 'custom.inMarket', 'In market %', Math.round(program.custom.inMarket * 100), 'number', { min: 0, step: 1 })}
@@ -2216,7 +2304,7 @@
       </div>
       <div class="waterfall-preview" id="waterfallPreview" aria-label="Waterfall preview">${waterfallPreview(program)}</div>
       <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-        <button class="secondary-btn" type="button" ${program.locked ? 'disabled' : ''} onclick="removeProgram('${program.id}', this)">Remove program</button>
+        <button class="secondary-btn" type="button" ${canEdit ? '' : 'disabled'} onclick="removeProgram('${program.id}', this)">Remove program</button>
       </div>`;
   }
 
@@ -2276,7 +2364,7 @@
   function resetBenchmarks(id, button) {
     const program = programs.find(p => p.id === id);
     if (!program) return;
-    if (program.locked) return;
+    if (!canEditProgram(program)) return;
     program.custom = { ...standardBenchmarks };
     program.mode = 'Standard';
     render();

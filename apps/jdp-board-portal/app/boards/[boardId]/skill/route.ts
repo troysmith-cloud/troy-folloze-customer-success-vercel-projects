@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
   if (!board) notFound();
   await recordBoardAccess(session.email, boardId);
 
-  return new Response(await renderSkillBoardHtml(board), {
+  return new Response(await renderSkillBoardHtml(board, session.email), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'private, no-store'

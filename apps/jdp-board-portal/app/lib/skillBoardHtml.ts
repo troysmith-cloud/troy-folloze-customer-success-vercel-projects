@@ -59,7 +59,7 @@ function savedCustomerLogo(board: BoardRecord) {
   }
 }
 
-export async function renderSkillBoardHtml(board: BoardRecord) {
+export async function renderSkillBoardHtml(board: BoardRecord, viewerEmail = '') {
   const customerName = escapeHtml(board.customerName);
   const stateEndpoint = `/api/boards/${encodeURIComponent(board.id)}/state`;
   let html = await readFile(TEMPLATE_PATH, 'utf8');
@@ -83,6 +83,8 @@ export async function renderSkillBoardHtml(board: BoardRecord) {
     .replace('SHEETS_OUTPUT_URL_PLACEHOLDER', '')
     .replace('SHEET_BUILDER_ENDPOINT_URL_PLACEHOLDER', '')
     .replace('BOARD_STATE_ENDPOINT_URL_PLACEHOLDER', stateEndpoint)
+    .replace("'BOARD_VIEWER_EMAIL_PLACEHOLDER'", JSON.stringify(viewerEmail.trim().toLowerCase()))
+    .replace("'BOARD_OWNER_EMAIL_PLACEHOLDER'", JSON.stringify(board.ownerEmail.trim().toLowerCase()))
     .replace('class="customer-placeholder"', `class="${customerPlaceholderClass}"`)
     .replace('<div class="customer-logo-placeholder" aria-hidden="true"></div>', customerLogoMarkup)
     .replace('<strong>Customer name / logo</strong>', `<strong>${customerName}</strong>`)
