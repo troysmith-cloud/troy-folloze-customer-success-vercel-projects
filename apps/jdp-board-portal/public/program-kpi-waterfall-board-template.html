@@ -2050,7 +2050,7 @@
   function updateCsm(value) {
     selectedCsm = value;
     renderSections();
-    persistStateDebounced();
+    flushState();
     safeAnalytic('model_update', { text: 'Your Customer Success Manager', area: 'main nav header bar', value });
   }
 
@@ -2851,6 +2851,7 @@
   }
 
   function render() {
+    syncHeaderControls();
     renderTabs();
     renderEditor();
     renderTotals();
@@ -2858,11 +2859,17 @@
   }
 
   function renderLiveOutputs() {
+    syncHeaderControls();
     renderTabs();
     renderTotals();
     renderWaterfallPreview();
     renderActualTracking();
     renderSections();
+  }
+
+  function syncHeaderControls() {
+    const csm = document.getElementById('customerCsm');
+    if (csm && csm.value !== selectedCsm) csm.value = selectedCsm;
   }
 
   function escapeHtml(value) {
