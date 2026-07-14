@@ -6,6 +6,7 @@ import { listBoards } from '../lib/storage';
 import { AccessManager } from './AccessManager';
 import { DeleteBoardButton } from './DeleteBoardButton';
 import { NewBoardForm } from './NewBoardForm';
+import { RenameBoardForm } from './RenameBoardForm';
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -39,12 +40,11 @@ export default async function DashboardPage() {
                     <div className="muted">
                       {board.customerName} · {board.accessRole === 'owner' ? 'Owner' : 'Shared access'} · Updated {new Date(board.updatedAt).toLocaleString()}
                     </div>
+                    <RenameBoardForm boardId={board.id} initialTitle={board.title} />
                     {board.accessRole === 'owner' ? (
-                      <>
-                        <AccessManager boardId={board.id} />
-                        <DeleteBoardButton boardId={board.id} boardTitle={board.title} />
-                      </>
+                      <AccessManager boardId={board.id} />
                     ) : null}
+                    <DeleteBoardButton boardId={board.id} boardTitle={board.title} />
                   </div>
                   <Link className="button primary" href={`/boards/${board.id}`}>Open</Link>
                 </div>

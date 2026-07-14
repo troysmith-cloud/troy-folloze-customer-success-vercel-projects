@@ -126,6 +126,24 @@ export async function deleteOwnedBoard(ownerEmail: string, boardId: string) {
   return true;
 }
 
+export async function deleteAccessibleBoard(email: string, boardId: string) {
+  const board = await getBoard(email, boardId);
+  if (!board) return false;
+  await Promise.all(accessEmails(board).map(accessEmail => removeUserBoardSummary(accessEmail, board.id)));
+  await deleteJson(boardPath(board.id));
+  return true;
+}
+
+export async function renameAccessibleBoard(email: string, boardId: string, title: string) {
+  const board = await getBoard(email, boardId);
+  if (!board) return null;
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return null;
+  board.title = cleanTitle.slice(0, 160);
+  await saveBoard(board);
+  return board;
+}
+
 function normalizeBoard(record: BoardRecord | null): BoardRecord | null {
   if (!record) return null;
   return {

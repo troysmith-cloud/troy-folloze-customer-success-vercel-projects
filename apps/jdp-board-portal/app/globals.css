@@ -185,12 +185,34 @@ button.danger {
   max-width: 560px;
 }
 
-.access-panel label {
+.access-panel label,
+.rename-board-form label {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--muted);
   font-weight: 900;
+}
+
+.rename-board-form {
+  margin-top: 12px;
+  display: grid;
+  gap: 7px;
+  max-width: 640px;
+}
+
+.rename-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.rename-row input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--navy);
 }
 
 .access-panel textarea {
@@ -283,6 +305,9 @@ button.danger {
 
 @media (max-width: 860px) {
   .grid, .planner-layout, .metrics, .board-row {
+    grid-template-columns: 1fr;
+  }
+  .rename-row {
     grid-template-columns: 1fr;
   }
   .sidebar { position: static; }

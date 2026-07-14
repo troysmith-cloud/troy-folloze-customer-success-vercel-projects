@@ -6,7 +6,7 @@ export function DeleteBoardButton({ boardId, boardTitle }: { boardId: string; bo
   const [status, setStatus] = useState('');
 
   async function deleteBoard() {
-    const confirmed = window.confirm(`Delete "${boardTitle}"? This removes the board for every authorized user.`);
+    const confirmed = window.confirm(`Delete "${boardTitle}"? This removes the board for every authorized user who has access.`);
     if (!confirmed) return;
     setStatus('Deleting...');
     const response = await fetch(`/api/boards/${boardId}`, { method: 'DELETE' });
