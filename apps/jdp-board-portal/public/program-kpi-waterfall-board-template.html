@@ -2757,6 +2757,35 @@
     pdf.addImage(image, 'JPEG', 0, 0, pageWidth, Math.min(pageHeight, imageHeight), undefined, 'FAST');
   }
 
+  function pdfKeepTogetherRanges(canvasScale) {
+    return Array.from(document.querySelectorAll('.waterfall-visual-section')).map(element => {
+      const rect = element.getBoundingClientRect();
+      return {
+        top: Math.max(0, Math.floor((rect.top + window.scrollY) * canvasScale)),
+        bottom: Math.ceil((rect.bottom + window.scrollY) * canvasScale)
+      };
+    }).filter(range => range.bottom > range.top);
+  }
+
+  function snapshotSliceHeight(sourceY, defaultHeight, canvasHeight, keepTogetherRanges) {
+    const idealEnd = Math.min(sourceY + defaultHeight, canvasHeight);
+    const pagePadding = 24;
+    for (const range of keepTogetherRanges) {
+      const startsOnThisPage = range.top > sourceY + pagePadding && range.top < idealEnd;
+      const boundaryCutsRange = idealEnd > range.top && idealEnd < range.bottom;
+      const rangeFitsOnPage = range.bottom - range.top <= defaultHeight;
+      if (startsOnThisPage && boundaryCutsRange && rangeFitsOnPage) {
+        return Math.max(pagePadding, range.top - sourceY);
+      }
+      const pageStartsInsideRange = sourceY > range.top && sourceY < range.bottom;
+      const canFinishRangeOnThisPage = range.bottom - sourceY <= defaultHeight;
+      if (pageStartsInsideRange && boundaryCutsRange && canFinishRangeOnThisPage) {
+        return Math.min(canvasHeight - sourceY, range.bottom - sourceY);
+      }
+    }
+    return Math.min(defaultHeight, canvasHeight - sourceY);
+  }
+
   async function saveBoardSnapshotPdf() {
     const html2canvas = window.html2canvas;
     const jsPDF = window.jspdf && window.jspdf.jsPDF;
@@ -2799,12 +2828,14 @@
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const pageHeightPx = Math.floor(canvas.width * (pageHeight / pageWidth));
+    const canvasScale = canvas.width / Math.max(document.documentElement.scrollWidth, document.body.scrollWidth, document.documentElement.clientWidth);
+    const keepTogetherRanges = pdfKeepTogetherRanges(canvasScale).filter(range => range.bottom - range.top < pageHeightPx);
     let sourceY = 0;
     let page = 0;
 
     while (sourceY < canvas.height) {
       const remaining = canvas.height - sourceY;
-      const sourceHeight = Math.min(pageHeightPx, remaining);
+      const sourceHeight = snapshotSliceHeight(sourceY, Math.min(pageHeightPx, remaining), canvas.height, keepTogetherRanges);
       if (page > 0) pdf.addPage('letter', 'portrait');
       addCanvasSliceToPdf(pdf, canvas, sourceY, sourceHeight, pageWidth, pageHeight);
       sourceY += sourceHeight;
