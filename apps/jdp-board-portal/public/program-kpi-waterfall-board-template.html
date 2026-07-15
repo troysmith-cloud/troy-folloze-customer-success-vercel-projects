@@ -2243,10 +2243,22 @@
     const id = `accountScale-${program.id}`;
     const disabled = canEditProgram(program) ? '' : 'disabled';
     const value = accountScaleValue(program);
+    const scaledAccounts = calculate(program).accounts;
     return `<div class="scale-field">
       <label for="${id}">Account scale</label>
       <input id="${id}" type="range" min="50" max="300" step="5" ${disabled} value="${value}" oninput="updateProgram('${program.id}', 'accountScale', this.value)">
-      <div class="scale-readout"><span>${whole.format(value)}%</span><span>scales accounts targeted</span></div>
+      <div class="scale-readout"><span>${whole.format(value)}%</span><span>Accounts targeted: ${whole.format(scaledAccounts)}</span></div>
+    </div>`;
+  }
+
+  function accountScaleImpactStrip(program) {
+    const c = calculate(program);
+    return `<div class="wide-field program-value-strip scale-impact-strip" aria-label="Account scale impact">
+      <span><em>Base accounts</em><strong>${whole.format(c.baseAccounts)}</strong></span>
+      <span><em>Scaled accounts targeted</em><strong>${whole.format(c.accounts)}</strong></span>
+      <span><em>Accounts in market</em><strong>${whole.format(c.inMarket)}</strong></span>
+      <span><em>Sales meetings</em><strong>${whole.format(c.meetings)}</strong></span>
+      <span><em>Pipeline goal</em><strong>${money(c.pipelineGoal)}</strong></span>
     </div>`;
   }
 
@@ -2398,8 +2410,9 @@
         ${selectField(program, 'content', 'Primary Content / Messaging', program.content || 'Thought leadership', contentCategories)}
         ${selectField(program, 'secondaryContent', 'Secondary Content / Messaging', program.secondaryContent || 'Solution proof', contentCategories)}
         ${selectField(program, 'mode', 'Benchmark Mode', isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard', ['Standard', customerBenchmarkMode])}
-        ${inputField(program, 'accounts', 'Accounts Targeted', program.accounts, 'number', { min: 0, step: 1 })}
+        ${inputField(program, 'accounts', 'Base Accounts Targeted', program.accounts, 'number', { min: 0, step: 1 })}
         ${accountScaleField(program)}
+        ${accountScaleImpactStrip(program)}
         ${inputField(program, 'dealSize', 'Average Deal Size', program.dealSize, 'number', { min: 0, step: 1000 })}
         ${inputField(program, 'projectedBoards', 'Projected Live Boards', program.projectedBoards || 0, 'number', { min: 0, step: 1 })}
         ${textareaField(program, 'notes', 'Notes', program.notes)}
