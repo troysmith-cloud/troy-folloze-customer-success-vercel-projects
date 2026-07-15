@@ -2255,8 +2255,7 @@
     const c = calculate(program);
     return `<div class="wide-field program-value-strip scale-impact-strip" aria-label="Account scale impact">
       <span><em>Base accounts</em><strong>${whole.format(c.baseAccounts)}</strong></span>
-      <span><em>Scaled accounts targeted</em><strong>${whole.format(c.accounts)}</strong></span>
-      <span><em>Accounts in market</em><strong>${whole.format(c.inMarket)}</strong></span>
+      <span><em>Scaled accounts in market</em><strong>${whole.format(c.inMarket)}</strong></span>
       <span><em>Sales meetings</em><strong>${whole.format(c.meetings)}</strong></span>
       <span><em>Pipeline goal</em><strong>${money(c.pipelineGoal)}</strong></span>
     </div>`;
