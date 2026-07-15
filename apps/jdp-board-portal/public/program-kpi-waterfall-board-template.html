@@ -409,35 +409,45 @@
   .list-actions button { flex: 1; }
   .program-tabs {
     display: grid;
-    gap: 10px;
+    gap: 12px;
     max-height: 548px;
     overflow: auto;
     padding-right: 4px;
   }
   .program-quarter-group {
     display: grid;
-    gap: 8px;
+    gap: 6px;
+    border-left: 5px solid var(--flz-blue);
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(0,119,255,.08), rgba(255,255,255,0));
+    padding: 6px 0 8px 8px;
   }
+  .program-quarter-group.quarter-q1 { border-left-color: #11d175; background: linear-gradient(90deg, rgba(17,209,117,.11), rgba(255,255,255,0)); }
+  .program-quarter-group.quarter-q2 { border-left-color: #f3c84b; background: linear-gradient(90deg, rgba(243,200,75,.14), rgba(255,255,255,0)); }
+  .program-quarter-group.quarter-q3 { border-left-color: #8b5cf6; background: linear-gradient(90deg, rgba(139,92,246,.11), rgba(255,255,255,0)); }
+  .program-quarter-group.quarter-q4 { border-left-color: #0077ff; background: linear-gradient(90deg, rgba(0,119,255,.11), rgba(255,255,255,0)); }
   .program-quarter-heading {
     position: sticky;
     top: 0;
     z-index: 1;
-    border: 1px solid var(--flz-line);
-    border-radius: 999px;
-    background: #ffffff;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: var(--flz-blue);
-    padding: 7px 10px;
-    font-size: 12px;
+    padding: 2px 6px 4px;
+    font-size: 11px;
     font-weight: 900;
     letter-spacing: .08em;
     text-transform: uppercase;
   }
   .program-tab-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px;
     align-items: stretch;
+    cursor: grab;
   }
+  .program-tab-row:active { cursor: grabbing; }
   .program-tab-row.dragging {
     opacity: .54;
   }
@@ -466,9 +476,10 @@
     border: 1px solid var(--flz-line);
     background: var(--flz-soft);
     border-radius: var(--radius);
-    padding: 12px;
+    padding: 8px 9px;
     color: var(--flz-slate);
     transition: border-color .18s ease, background-color .18s ease, transform .18s ease;
+    min-width: 0;
   }
   .program-tab:hover { transform: translateY(-1px); }
   .program-tab[aria-selected="true"] {
@@ -483,17 +494,28 @@
   .program-tab.priority-5 { border-left: 7px solid #ff4d6d; }
   .program-tab strong {
     display: block;
-    font-size: 15px;
-    margin-bottom: 3px;
+    font-size: 13px;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .program-tab small { font-weight: 700; opacity: .78; }
+  .program-tab small {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    opacity: .78;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .priority-select {
     border: 1px solid var(--flz-line);
     border-radius: var(--radius);
-    padding: 0 8px;
-    min-width: 92px;
+    padding: 0 4px;
+    min-width: 50px;
     color: var(--flz-slate);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
   }
   .priority-select.priority-1 { background: #e8fbf2; border-color: #11d175; color: #087a45; }
@@ -511,8 +533,8 @@
     background: #fff7fb;
     color: #b3195b;
     border-radius: var(--radius);
-    padding: 0 10px;
-    font-size: 12px;
+    padding: 0 7px;
+    font-size: 11px;
     font-weight: 900;
   }
   .program-tab[aria-selected="true"] ~ .delete-tab-btn {
@@ -2347,20 +2369,18 @@
       const quarterPrograms = programsForPeriod(period.year, period.quarter);
       const rows = quarterPrograms.map(program => {
       const index = programs.findIndex(item => item.id === program.id);
-      const c = calculate(program);
       return `<div class="program-tab-row" draggable="true" data-program-id="${program.id}" ondragstart="handleProgramDragStart(event, '${program.id}')" ondragend="handleProgramDragEnd(event)" ondragover="handleProgramDragOver(event)" ondragleave="handleProgramDragLeave(event)" ondrop="handleProgramDrop(event, '${program.id}')">
-        <button class="drag-handle" type="button" aria-label="Drag ${escapeHtml(program.name || program.type)} to reorder" title="Drag to reorder">⋮⋮</button>
         <button class="program-tab ${priorityClass(program)}" type="button" role="tab" aria-selected="${program.id === activeId}" onclick="setActive('${program.id}', this)">
-          <strong>${index + 1}. ${escapeHtml(periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'))} · ${escapeHtml(program.type)}</strong>
-          <small>${escapeHtml(program.name || 'Unnamed program')} · ${escapeHtml(campaignName(program))} · ${escapeHtml(priorityLabel(program))} · ${money(c.pipelineGoal)} pipeline</small>
+          <strong>${index + 1}. ${escapeHtml(program.type)}</strong>
+          <small>${escapeHtml(program.name || 'Unnamed program')}</small>
         </button>
         <select class="priority-select ${priorityClass(program)}" ${canEditProgram(program) ? '' : 'disabled'} aria-label="Priority for ${escapeHtml(program.name || program.type)}" onchange="updateProgram('${program.id}', 'priority', this.value)">
           ${programPriorities.map(priority => `<option value="${priority}" ${priorityValue(program) === priority ? 'selected' : ''}>P${priority}</option>`).join('')}
         </select>
-        <button class="delete-tab-btn" type="button" ${canEditProgram(program) ? '' : 'disabled'} onclick="removeProgram('${program.id}', this)" aria-label="Delete ${escapeHtml(program.name || program.type)}">Delete</button>
+        <button class="delete-tab-btn" type="button" ${canEditProgram(program) ? '' : 'disabled'} onclick="removeProgram('${program.id}', this)" aria-label="Delete ${escapeHtml(program.name || program.type)}">Del</button>
       </div>`;
       }).join('');
-      return `<div class="program-quarter-group">
+      return `<div class="program-quarter-group quarter-${escapeHtml((period.quarter || '').toLowerCase())}">
         <div class="program-quarter-heading">${escapeHtml(period.label)} · ${whole.format(quarterPrograms.length)} programs</div>
         ${rows || '<div class="empty">No programs in this quarter.</div>'}
       </div>`;
