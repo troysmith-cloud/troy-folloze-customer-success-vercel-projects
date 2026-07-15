@@ -10,5 +10,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
   if (!board) notFound();
   await setPortalBoardSelection(session.email, boardId);
   await recordBoardAccess(session.email, boardId);
-  redirect(`/boards/${boardId}/skill`);
+  return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/boards/${encodeURIComponent(boardId)}/skill"><title>Opening board</title></head><body><p>Opening board...</p><script>window.location.replace('/boards/${encodeURIComponent(boardId)}/skill');</script></body></html>`, {
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'private, no-store'
+    }
+  });
 }
