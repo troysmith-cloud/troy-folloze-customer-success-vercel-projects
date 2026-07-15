@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/Header';
 import { getSession } from '../lib/auth';
@@ -7,7 +6,10 @@ import { AccessManager } from './AccessManager';
 import { BoardAccessReport } from './BoardAccessReport';
 import { DeleteBoardButton } from './DeleteBoardButton';
 import { NewBoardForm } from './NewBoardForm';
+import { OpenBoardButton } from './OpenBoardButton';
 import { RenameBoardForm } from './RenameBoardForm';
+
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -51,7 +53,7 @@ export default async function DashboardPage() {
                     <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />
                   </div>
                   <div className="board-actions">
-                    <Link className="button primary" href={`/dashboard/open/${board.id}`}>Open</Link>
+                    <OpenBoardButton boardId={board.id} />
                     {board.accessRole === 'owner' && board.follozeEditUrl ? (
                       <a className="button secondary" href={board.follozeEditUrl} target="_blank" rel="noopener noreferrer">Edit in Folloze</a>
                     ) : null}

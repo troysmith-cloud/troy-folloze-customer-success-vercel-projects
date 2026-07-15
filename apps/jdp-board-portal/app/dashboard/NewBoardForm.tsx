@@ -28,7 +28,7 @@ export function NewBoardForm() {
     }
     const data = await response.json();
     setStatus(`Created "${data.title}". Select it from Saved boards to open.`);
-    window.location.href = '/dashboard';
+    window.location.href = `/dashboard?created=${encodeURIComponent(data.id)}`;
   }
 
   return (
