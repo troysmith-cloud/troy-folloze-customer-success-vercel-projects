@@ -581,7 +581,7 @@
   .wide-field { grid-column: 1 / -1; }
   .planner-settings {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin: -6px 0 18px;
     padding: 14px;
@@ -1319,11 +1319,6 @@
         <label>Quarter order</label>
         <input id="quarterOrderPreview" type="text" value="Q1 -> Q2 -> Q3 -> Q4" readonly>
       </div>
-      <div class="scale-field">
-        <label for="plan-accountScale">Account scale</label>
-        <input id="plan-accountScale" type="range" min="50" max="300" step="5" value="100" oninput="updatePlanSetting('accountScale', this.value)">
-        <div class="scale-readout"><span id="accountScaleLabel">100%</span><span>applies before benchmarks</span></div>
-      </div>
     </div>
 
     <div class="totals" aria-label="Portfolio totals">
@@ -1503,6 +1498,7 @@
       locked: false,
       mode: 'Standard',
       accounts: 1200,
+      accountScale: 100,
       dealSize: 5000000,
       projectedBoards: 1,
       actual: { liveBoards: 0, inMarket: 0, engaged: 0, meetings: 0, pipelineOpps: 0, closedDeals: 0, pipelineGoal: 0, bookings: 0 },
@@ -1513,8 +1509,7 @@
   let selectedCsm = 'Meghan Richardson';
   let planSettings = {
     startQuarter: 'Q1',
-    activeYear: '2026',
-    accountScale: 100
+    activeYear: '2026'
   };
   let channelEditorOpen = {};
   let channelDrafts = {};
@@ -1640,6 +1635,7 @@
       priority: programPriorities.includes(String(program.priority)) ? String(program.priority) : '3',
       mode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
       accounts: Number(program.accounts) || 0,
+      accountScale: Math.max(50, Math.min(300, Number(program.accountScale ?? planSettings.accountScale) || 100)),
       dealSize: Number(program.dealSize) || 0,
       projectedBoards: Number(program.projectedBoards) || 0,
       actual: { liveBoards: 0, engaged: 0, meetings: 0, pipelineOpps: 0, closedDeals: 0, pipelineGoal: 0, bookings: 0, ...(program.actual || {}) },
@@ -1713,9 +1709,9 @@
   function applySavedState(state, source = 'local') {
     if (!state || !Array.isArray(state.programs)) return false;
     restoringState = true;
-    programs = state.programs.map(normalizeProgramState);
     planSettings = { ...planSettings, ...(state.planSettings || {}) };
     planSettings.accountScale = Math.max(50, Math.min(300, Number(planSettings.accountScale) || 100));
+    programs = state.programs.map(normalizeProgramState);
     selectedCsm = state.selectedCsm || selectedCsm;
     activeId = programs.some(program => program.id === state.activeId) ? state.activeId : (programs[0] ? programs[0].id : null);
     channelEditorOpen = state.channelEditorOpen && typeof state.channelEditorOpen === 'object'
@@ -1876,8 +1872,12 @@
     return Number(program.programYear || planSettings.activeYear) * 10 + fiscalQuarterIndex(program.quarter);
   }
 
-  function accountScaleFactor() {
-    return Math.max(50, Math.min(300, Number(planSettings.accountScale) || 100)) / 100;
+  function accountScaleValue(program) {
+    return Math.max(50, Math.min(300, Number(program.accountScale ?? planSettings.accountScale) || 100));
+  }
+
+  function accountScaleFactor(program) {
+    return accountScaleValue(program) / 100;
   }
 
   function orderedPrograms() {
@@ -1887,7 +1887,8 @@
   function calculate(program) {
     const b = benchmarkFor(program);
     const baseAccounts = Number(program.accounts) || 0;
-    const accounts = Math.round(baseAccounts * accountScaleFactor());
+    const accountScale = accountScaleValue(program);
+    const accounts = Math.round(baseAccounts * accountScaleFactor(program));
     const dealSize = Number(program.dealSize) || 0;
     const projectedBoards = Number(program.projectedBoards) || 0;
     const actual = actualsFor(program);
@@ -1899,6 +1900,7 @@
     return {
       b,
       baseAccounts,
+      accountScale,
       accounts,
       dealSize,
       inMarket,
@@ -2058,10 +2060,12 @@
       program.priority = programPriorities.includes(String(value)) ? String(value) : '3';
     } else if (key === 'accounts' || key === 'dealSize' || key === 'projectedBoards') {
       program[key] = Number(value);
+    } else if (key === 'accountScale') {
+      program.accountScale = Math.max(50, Math.min(300, Number(value) || 100));
     } else {
       program[key] = value;
     }
-    if (key === 'mode' || key === 'priority' || key.startsWith('custom.')) {
+    if (key === 'mode' || key === 'priority' || key === 'accountScale' || key.startsWith('custom.')) {
       renderEditor();
     }
     renderLiveOutputs();
@@ -2137,6 +2141,7 @@
       priority: programPriorities.includes(String(seed.priority)) ? String(seed.priority) : '3',
       mode: isCustomerBenchmarkMode(seed.mode) ? customerBenchmarkMode : 'Standard',
       accounts: seed.accounts || 0,
+      accountScale: Math.max(50, Math.min(300, Number(seed.accountScale ?? planSettings.accountScale) || 100)),
       dealSize: seed.dealSize || 0,
       projectedBoards: seed.projectedBoards || 0,
       actual: seed.actual ? { ...seed.actual } : { liveBoards: 0, engaged: 0, meetings: 0, pipelineOpps: 0, closedDeals: 0, pipelineGoal: 0, bookings: 0 },
@@ -2231,6 +2236,17 @@
     return `<div class="${opts.wide ? 'wide-field' : 'field'}">
       <label for="${id}">${label}</label>
       <input id="${id}" type="${type}" ${attr} ${disabled} value="${escapeHtml(value ?? '')}" oninput="updateProgram('${program.id}', '${key}', this.value)">
+    </div>`;
+  }
+
+  function accountScaleField(program) {
+    const id = `accountScale-${program.id}`;
+    const disabled = canEditProgram(program) ? '' : 'disabled';
+    const value = accountScaleValue(program);
+    return `<div class="scale-field">
+      <label for="${id}">Account scale</label>
+      <input id="${id}" type="range" min="50" max="300" step="5" ${disabled} value="${value}" oninput="updateProgram('${program.id}', 'accountScale', this.value)">
+      <div class="scale-readout"><span>${whole.format(value)}%</span><span>scales accounts targeted</span></div>
     </div>`;
   }
 
@@ -2383,6 +2399,7 @@
         ${selectField(program, 'secondaryContent', 'Secondary Content / Messaging', program.secondaryContent || 'Solution proof', contentCategories)}
         ${selectField(program, 'mode', 'Benchmark Mode', isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard', ['Standard', customerBenchmarkMode])}
         ${inputField(program, 'accounts', 'Accounts Targeted', program.accounts, 'number', { min: 0, step: 1 })}
+        ${accountScaleField(program)}
         ${inputField(program, 'dealSize', 'Average Deal Size', program.dealSize, 'number', { min: 0, step: 1000 })}
         ${inputField(program, 'projectedBoards', 'Projected Live Boards', program.projectedBoards || 0, 'number', { min: 0, step: 1 })}
         ${textareaField(program, 'notes', 'Notes', program.notes)}
@@ -2492,14 +2509,9 @@
     const orderPreview = document.getElementById('quarterOrderPreview');
     const activeYear = document.getElementById('plan-activeYear');
     const startQuarter = document.getElementById('plan-startQuarter');
-    const accountScale = document.getElementById('plan-accountScale');
-    const accountScaleLabel = document.getElementById('accountScaleLabel');
-    const scalePct = Math.round(accountScaleFactor() * 100);
     if (orderPreview) orderPreview.value = quarterSequence().join(' -> ');
     if (activeYear) activeYear.value = planSettings.activeYear;
     if (startQuarter) startQuarter.value = planSettings.startQuarter;
-    if (accountScale) accountScale.value = String(scalePct);
-    if (accountScaleLabel) accountScaleLabel.textContent = `${scalePct}%`;
     document.getElementById('totalPrograms').textContent = whole.format(programs.length);
     document.getElementById('totalPipeline').textContent = money(t.pipelineGoal);
     document.getElementById('totalBookings').textContent = money(t.bookings);
@@ -2709,7 +2721,7 @@
       exportedAt: new Date().toISOString(),
       customerHeadline: document.getElementById('hero-title').textContent.trim(),
       customerSuccessManager: selectedCsm,
-      planSettings: { ...planSettings, accountScale: Math.round(accountScaleFactor() * 100), quarterOrder: quarterSequence() },
+      planSettings: { ...planSettings, quarterOrder: quarterSequence() },
       slidesDeckUrl,
       sheetsOutputUrl,
       fullYear,
@@ -2745,6 +2757,7 @@
         notes: program.notes,
         priority: priorityValue(program),
         priorityLabel: priorityLabel(program),
+        accountScale: accountScaleValue(program),
         benchmarkMode: isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard',
         assumptions: benchmarkFor(program),
         calculations: calculate(program)
@@ -2792,7 +2805,7 @@
             program.notes,
             program.benchmarkMode,
             program.calculations.baseAccounts,
-            base.planSettings.accountScale,
+            program.accountScale,
             program.calculations.accounts,
             program.calculations.dealSize,
             standardBenchmarks.inMarket,
