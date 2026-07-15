@@ -27,7 +27,8 @@ export function NewBoardForm() {
       return;
     }
     const data = await response.json();
-    window.location.href = `/boards/${data.id}`;
+    setStatus(`Created "${data.title}". Select it from Saved boards to open.`);
+    window.location.href = '/dashboard';
   }
 
   return (

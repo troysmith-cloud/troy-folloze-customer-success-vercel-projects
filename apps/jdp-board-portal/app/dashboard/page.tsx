@@ -51,7 +51,7 @@ export default async function DashboardPage() {
                     <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />
                   </div>
                   <div className="board-actions">
-                    <Link className="button primary" href={`/boards/${board.id}`}>Open</Link>
+                    <Link className="button primary" href={`/dashboard/open/${board.id}`}>Open</Link>
                     {board.accessRole === 'owner' && board.follozeEditUrl ? (
                       <a className="button secondary" href={board.follozeEditUrl} target="_blank" rel="noopener noreferrer">Edit in Folloze</a>
                     ) : null}
