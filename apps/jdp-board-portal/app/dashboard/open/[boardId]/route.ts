@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { getSession, setPortalBoardSelection } from '../../../lib/auth';
-import { getBoard, recordBoardAccess } from '../../../lib/storage';
+import { ensureDailyBoardSnapshot, getBoard, recordBoardAccess } from '../../../lib/storage';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
   const session = await getSession();
@@ -8,6 +8,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
   const { boardId } = await params;
   const board = await getBoard(session.email, boardId);
   if (!board) notFound();
+  await ensureDailyBoardSnapshot(session.email, boardId);
   await setPortalBoardSelection(session.email, boardId);
   await recordBoardAccess(session.email, boardId);
   return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/boards/${encodeURIComponent(boardId)}/skill"><title>Opening board</title></head><body><p>Opening board...</p><script>window.location.replace('/boards/${encodeURIComponent(boardId)}/skill');</script></body></html>`, {

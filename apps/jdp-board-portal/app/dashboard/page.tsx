@@ -4,6 +4,7 @@ import { getSession } from '../lib/auth';
 import { listBoards } from '../lib/storage';
 import { AccessManager } from './AccessManager';
 import { BoardAccessReport } from './BoardAccessReport';
+import { BoardSnapshotRestore } from './BoardSnapshotRestore';
 import { DeleteBoardButton } from './DeleteBoardButton';
 import { NewBoardForm } from './NewBoardForm';
 import { OpenBoardButton } from './OpenBoardButton';
@@ -48,6 +49,7 @@ export default async function DashboardPage() {
                         <RenameBoardForm boardId={board.id} initialTitle={board.title} />
                         <AccessManager boardId={board.id} />
                         <BoardAccessReport boardId={board.id} />
+                        <BoardSnapshotRestore boardId={board.id} boardTitle={board.title} />
                       </>
                     ) : null}
                     <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />

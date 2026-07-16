@@ -2,9 +2,10 @@ import { del, get, list, put } from '@vercel/blob';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { BOARD_PLANNER_TITLE } from './constants';
-import type { BoardAccessLogEntry, BoardRecord, BoardSummary } from './types';
+import type { BoardAccessLogEntry, BoardRecord, BoardSnapshot, BoardSummary } from './types';
 
 const LOCAL_DATA_DIR = path.join(process.cwd(), '.data');
+const SNAPSHOT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 function hasBlob() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
@@ -52,6 +53,10 @@ function boardPath(boardId: string) {
 
 function boardAccessLogPath(boardId: string) {
   return `boards/${boardId}.access.json`;
+}
+
+function boardSnapshotPath(boardId: string) {
+  return `board-snapshots/${boardId}.json`;
 }
 
 async function readJson<T>(pathname: string, fallback: T): Promise<T> {
@@ -177,6 +182,62 @@ export async function saveBoard(record: BoardRecord) {
   await Promise.all(accessEmails(record).map(email => upsertUserBoardSummary(email, record)));
 }
 
+export async function ensureDailyBoardSnapshot(email: string, boardId: string) {
+  const board = await getBoard(email, boardId);
+  if (!board) return null;
+  const existing = await readJson<BoardSnapshot | null>(boardSnapshotPath(board.id), null);
+  const existingAt = Date.parse(existing?.createdAt || '');
+  if (existing && Number.isFinite(existingAt) && Date.now() - existingAt < SNAPSHOT_INTERVAL_MS) {
+    return toSnapshotSummary(existing);
+  }
+  const snapshot: BoardSnapshot = {
+    boardId: board.id,
+    createdAt: new Date().toISOString(),
+    createdByEmail: normalizeEmail(email),
+    board: structuredCloneBoard(board)
+  };
+  await deleteJson(boardSnapshotPath(board.id));
+  await writeJson(boardSnapshotPath(board.id), snapshot);
+  return toSnapshotSummary(snapshot);
+}
+
+export async function getBoardSnapshotSummary(ownerEmail: string, boardId: string) {
+  const board = await getOwnedBoard(ownerEmail, boardId);
+  if (!board) return null;
+  const snapshot = await readJson<BoardSnapshot | null>(boardSnapshotPath(board.id), null);
+  return snapshot ? toSnapshotSummary(snapshot) : null;
+}
+
+export async function restoreBoardSnapshot(ownerEmail: string, boardId: string) {
+  const board = await getOwnedBoard(ownerEmail, boardId);
+  if (!board) return null;
+  const snapshot = await readJson<BoardSnapshot | null>(boardSnapshotPath(board.id), null);
+  if (!snapshot || snapshot.boardId !== board.id) return null;
+  const prior = normalizeBoard(snapshot.board);
+  if (!prior) return null;
+  const restored: BoardRecord = {
+    ...board,
+    title: prior.title,
+    customerName: prior.customerName,
+    customerDomain: prior.customerDomain,
+    customerLogoUrl: prior.customerLogoUrl,
+    customerLogoAlt: prior.customerLogoAlt,
+    customerLogoIncludesName: prior.customerLogoIncludesName,
+    state: {
+      ...structuredCloneState(prior.state),
+      customerName: prior.customerName,
+      restoredFromSnapshotAt: snapshot.createdAt,
+      restoredAt: new Date().toISOString(),
+      restoredByEmail: normalizeEmail(ownerEmail)
+    }
+  };
+  await saveBoard(restored);
+  return {
+    board: restored,
+    snapshot: toSnapshotSummary(snapshot)
+  };
+}
+
 export async function updateBoardAccess(ownerEmail: string, boardId: string, sharedEmails: string[], nextOwnerEmail?: string, follozeEditUrl?: string) {
   const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return null;
@@ -204,7 +265,7 @@ export async function deleteOwnedBoard(ownerEmail: string, boardId: string) {
   const board = await getOwnedBoard(ownerEmail, boardId);
   if (!board) return false;
   await Promise.all(accessEmails(board).map(email => removeUserBoardSummary(email, board.id)));
-  await Promise.all([deleteJson(boardPath(board.id)), deleteJson(boardAccessLogPath(board.id))]);
+  await Promise.all([deleteJson(boardPath(board.id)), deleteJson(boardAccessLogPath(board.id)), deleteJson(boardSnapshotPath(board.id))]);
   return true;
 }
 
@@ -219,7 +280,7 @@ export async function deleteAccessibleBoard(email: string, boardId: string) {
     removeUserBoardSummary(accessEmail, board.id),
     removeHiddenBoard(accessEmail, board.id)
   ])));
-  await Promise.all([deleteJson(boardPath(board.id)), deleteJson(boardAccessLogPath(board.id))]);
+  await Promise.all([deleteJson(boardPath(board.id)), deleteJson(boardAccessLogPath(board.id)), deleteJson(boardSnapshotPath(board.id))]);
   return true;
 }
 
@@ -231,6 +292,27 @@ export async function renameOwnedBoard(ownerEmail: string, boardId: string, titl
   board.title = cleanTitle.slice(0, 160);
   await saveBoard(board);
   return board;
+}
+
+function structuredCloneBoard(board: BoardRecord): BoardRecord {
+  return JSON.parse(JSON.stringify(board)) as BoardRecord;
+}
+
+function structuredCloneState(state: BoardRecord['state']) {
+  return JSON.parse(JSON.stringify(state)) as BoardRecord['state'];
+}
+
+function toSnapshotSummary(snapshot: BoardSnapshot) {
+  return {
+    boardId: snapshot.boardId,
+    createdAt: snapshot.createdAt,
+    createdByEmail: snapshot.createdByEmail,
+    title: snapshot.board.title,
+    customerName: snapshot.board.customerName,
+    programCount: Array.isArray(snapshot.board.state?.programs) ? snapshot.board.state.programs.length : 0,
+    selectedCsm: snapshot.board.state?.selectedCsm || null,
+    boardUpdatedAt: snapshot.board.updatedAt
+  };
 }
 
 function normalizeBoard(record: BoardRecord | null): BoardRecord | null {

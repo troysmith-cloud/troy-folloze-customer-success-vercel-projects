@@ -59,6 +59,13 @@ export type BoardRecord = {
   state: BoardState;
 };
 
+export type BoardSnapshot = {
+  boardId: string;
+  createdAt: string;
+  createdByEmail: string;
+  board: BoardRecord;
+};
+
 export type BoardSummary = Pick<BoardRecord, 'id' | 'title' | 'customerName' | 'updatedAt'> & {
   accessRole: 'owner' | 'shared';
   follozeEditUrl?: string;

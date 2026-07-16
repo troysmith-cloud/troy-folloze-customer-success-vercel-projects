@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession, setPortalBoardSelection } from '../../../../lib/auth';
-import { getBoard, recordBoardAccess } from '../../../../lib/storage';
+import { ensureDailyBoardSnapshot, getBoard, recordBoardAccess } from '../../../../lib/storage';
 
 export async function POST(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
   const session = await getSession();
@@ -8,6 +8,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ bo
   const { boardId } = await params;
   const board = await getBoard(session.email, boardId);
   if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  await ensureDailyBoardSnapshot(session.email, boardId);
   await setPortalBoardSelection(session.email, boardId);
   await recordBoardAccess(session.email, boardId);
   return NextResponse.json({ ok: true, url: `/boards/${boardId}/skill` });
