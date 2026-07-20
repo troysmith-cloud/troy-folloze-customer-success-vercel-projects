@@ -426,6 +426,7 @@
   .program-quarter-group.quarter-q2 { border-left-color: #f3c84b; background: linear-gradient(90deg, rgba(243,200,75,.14), rgba(255,255,255,0)); }
   .program-quarter-group.quarter-q3 { border-left-color: #8b5cf6; background: linear-gradient(90deg, rgba(139,92,246,.11), rgba(255,255,255,0)); }
   .program-quarter-group.quarter-q4 { border-left-color: #0077ff; background: linear-gradient(90deg, rgba(0,119,255,.11), rgba(255,255,255,0)); }
+  .program-quarter-group.quarter-evergreen { border-left-color: #00b8a9; background: linear-gradient(90deg, rgba(0,184,169,.12), rgba(255,255,255,0)); }
   .program-quarter-heading {
     position: sticky;
     top: 0;
@@ -1314,7 +1315,7 @@
       <div>
         <div class="eyebrow">Interactive model</div>
         <h2 id="planner-title">Build the year by quarter, tune benchmarks, model the waterfall.</h2>
-        <p>Each program works like a section in the spreadsheet and rolls into Q1, Q2, Q3, or Q4. Standard benchmarks are preloaded, and customer benchmarks can override the standard chain for any program.</p>
+        <p>Each program works like a section in the spreadsheet and rolls into Q1, Q2, Q3, Q4, or Evergreen. Standard benchmarks are preloaded, and customer benchmarks can override the standard chain for any program.</p>
       </div>
       <button class="primary-btn" type="button" onclick="addProgramFromButton(this)">+ Program type</button>
     </div>
@@ -1502,7 +1503,8 @@
     'Newsletter content',
     'Other'
   ];
-  const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const fiscalQuarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const programPeriods = [...fiscalQuarters, 'Evergreen'];
   const programYears = ['2026', '2027', '2028', '2029'];
 
   let programs = [
@@ -1642,7 +1644,7 @@
   function normalizeProgramState(program, index) {
     return {
       id: program.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + index)),
-      quarter: quarters.includes(program.quarter) ? program.quarter : 'Q1',
+      quarter: programPeriods.includes(program.quarter) ? program.quarter : 'Q1',
       programYear: programYears.includes(String(program.programYear)) ? String(program.programYear) : planSettings.activeYear,
       type: program.type || '1:few ABM',
       name: program.name || `Program ${index + 1}`,
@@ -1879,8 +1881,12 @@
   }
 
   function quarterSequence() {
-    const start = quarters.indexOf(planSettings.startQuarter);
-    return start <= 0 ? [...quarters] : quarters.slice(start).concat(quarters.slice(0, start));
+    const start = fiscalQuarters.indexOf(planSettings.startQuarter);
+    return start <= 0 ? [...fiscalQuarters] : fiscalQuarters.slice(start).concat(fiscalQuarters.slice(0, start));
+  }
+
+  function periodSequence() {
+    return [...quarterSequence(), 'Evergreen'];
   }
 
   function periodLabel(year, quarter) {
@@ -1888,7 +1894,7 @@
   }
 
   function fiscalQuarterIndex(quarter) {
-    const index = quarterSequence().indexOf(quarter || 'Q1');
+    const index = periodSequence().indexOf(quarter || 'Q1');
     return index < 0 ? 0 : index;
   }
 
@@ -2009,7 +2015,7 @@
   }
 
   function periodDefinitions() {
-    return programYears.flatMap(year => quarterSequence().map(quarter => ({
+    return programYears.flatMap(year => periodSequence().map(quarter => ({
       year,
       quarter,
       label: periodLabel(year, quarter)
@@ -2426,7 +2432,7 @@
       </div>
       <div class="editor-grid">
         ${selectField(program, 'programYear', 'Program Year', String(program.programYear || planSettings.activeYear), programYears)}
-        ${selectField(program, 'quarter', 'Quarter', program.quarter || 'Q1', quarters)}
+        ${selectField(program, 'quarter', 'Quarter', program.quarter || 'Q1', programPeriods)}
         ${selectField(program, 'type', '+ Program Type', program.type, programTypes)}
         ${prioritySelectField(program)}
         ${inputField(program, 'name', 'Program Name', program.name, 'text', { wide: true })}
@@ -2644,7 +2650,7 @@
     image.setAttribute('height', '620');
     image.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     if (caption) {
-      caption.textContent = `${whole.format(t.programs)} programs modeled across ${quarterSequence().join('-')} · ${whole.format(t.projectedBoards)} projected live boards · ${whole.format(t.actualLiveBoards)} published boards · ${money(t.pipelineGoal)} projected pipeline · ${money(t.actualPipelineGoal)} actual pipeline.`;
+      caption.textContent = `${whole.format(t.programs)} programs modeled across ${periodSequence().join('-')} · ${whole.format(t.projectedBoards)} projected live boards · ${whole.format(t.actualLiveBoards)} published boards · ${money(t.pipelineGoal)} projected pipeline · ${money(t.actualPipelineGoal)} actual pipeline.`;
     }
   }
 

@@ -5,7 +5,7 @@ export type Session = {
 
 export type Program = {
   id: string;
-  quarter: 'Q1' | 'Q2' | 'Q3' | 'Q4';
+  quarter: 'Q1' | 'Q2' | 'Q3' | 'Q4' | 'Evergreen';
   programYear: '2026' | '2027' | '2028' | '2029';
   type: string;
   name: string;
