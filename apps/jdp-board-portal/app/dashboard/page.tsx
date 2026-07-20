@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Header } from '../components/Header';
 import { getSession } from '../lib/auth';
-import { listBoards } from '../lib/storage';
+import { isFollozeEmail, listBoards } from '../lib/storage';
 import { AccessManager } from './AccessManager';
 import { BoardAccessReport } from './BoardAccessReport';
 import { BoardSnapshotRestore } from './BoardSnapshotRestore';
@@ -16,6 +16,7 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect('/login');
   const boards = await listBoards(session.email);
+  const canManageSharedAccess = isFollozeEmail(session.email);
 
   return (
     <>
@@ -51,6 +52,9 @@ export default async function DashboardPage() {
                         <BoardAccessReport boardId={board.id} />
                         <BoardSnapshotRestore boardId={board.id} boardTitle={board.title} />
                       </>
+                    ) : null}
+                    {board.accessRole !== 'owner' && canManageSharedAccess ? (
+                      <AccessManager boardId={board.id} />
                     ) : null}
                     <DeleteBoardButton boardId={board.id} boardTitle={board.title} accessRole={board.accessRole} />
                   </div>

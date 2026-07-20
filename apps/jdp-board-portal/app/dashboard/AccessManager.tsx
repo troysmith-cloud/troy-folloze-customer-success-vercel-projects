@@ -14,6 +14,7 @@ export function AccessManager({ boardId }: { boardId: string }) {
   const [initialOwnerEmail, setInitialOwnerEmail] = useState('');
   const [emails, setEmails] = useState('');
   const [follozeEditUrl, setFollozeEditUrl] = useState('');
+  const [canManageOwnerControls, setCanManageOwnerControls] = useState(false);
   const [status, setStatus] = useState('Loading access...');
 
   useEffect(() => {
@@ -26,7 +27,8 @@ export function AccessManager({ boardId }: { boardId: string }) {
         setInitialOwnerEmail(data.ownerEmail || '');
         setEmails((data.sharedEmails || []).join('\n'));
         setFollozeEditUrl(data.follozeEditUrl || '');
-        setStatus('Owner controls');
+        setCanManageOwnerControls(Boolean(data.canManageOwnerControls));
+        setStatus(data.canManageOwnerControls ? 'Owner controls' : 'Folloze access controls');
       })
       .catch(error => {
         if (!active) return;
@@ -52,6 +54,7 @@ export function AccessManager({ boardId }: { boardId: string }) {
     setInitialOwnerEmail(data.ownerEmail || '');
     setEmails((data.sharedEmails || []).join('\n'));
     setFollozeEditUrl(data.follozeEditUrl || '');
+    setCanManageOwnerControls(Boolean(data.canManageOwnerControls));
     setStatus('Access saved');
     if (data.ownerEmail && data.ownerEmail !== initialOwnerEmail) {
       window.location.reload();
@@ -67,6 +70,7 @@ export function AccessManager({ boardId }: { boardId: string }) {
         onChange={event => setOwnerEmail(event.target.value)}
         placeholder="owner@example.com"
         type="email"
+        disabled={!canManageOwnerControls}
       />
       <label htmlFor={`access-${boardId}`}>Authorized customer emails</label>
       <textarea
@@ -82,6 +86,7 @@ export function AccessManager({ boardId }: { boardId: string }) {
         onChange={event => setFollozeEditUrl(event.target.value)}
         placeholder="https://app.folloze.com/..."
         type="url"
+        disabled={!canManageOwnerControls}
       />
       <div className="access-actions">
         <span className="status">{status}</span>

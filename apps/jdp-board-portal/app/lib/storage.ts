@@ -23,6 +23,10 @@ export function normalizeEmailList(emails: string[] = []) {
   return Array.from(new Set(emails.map(normalizeEmail).filter(Boolean)));
 }
 
+export function isFollozeEmail(email: string) {
+  return normalizeEmail(email).endsWith('@folloze.com');
+}
+
 export function normalizeFollozeEditUrl(url?: string) {
   const trimmed = (url || '').trim();
   if (!trimmed) return '';
@@ -125,6 +129,13 @@ export async function getOwnedBoard(email: string, boardId: string): Promise<Boa
   const record = await readJson<BoardRecord | null>(boardPath(boardId), null);
   const normalized = normalizeBoard(record);
   if (!normalized || normalized.ownerEmail !== normalizeEmail(email)) return null;
+  return normalized;
+}
+
+export async function getAccessManageableBoard(email: string, boardId: string): Promise<BoardRecord | null> {
+  const record = await readJson<BoardRecord | null>(boardPath(boardId), null);
+  const normalized = normalizeBoard(record);
+  if (!canManageBoardAccess(normalized, email)) return null;
   return normalized;
 }
 
@@ -238,20 +249,21 @@ export async function restoreBoardSnapshot(ownerEmail: string, boardId: string) 
   };
 }
 
-export async function updateBoardAccess(ownerEmail: string, boardId: string, sharedEmails: string[], nextOwnerEmail?: string, follozeEditUrl?: string) {
-  const board = await getOwnedBoard(ownerEmail, boardId);
+export async function updateBoardAccess(managerEmail: string, boardId: string, sharedEmails: string[], nextOwnerEmail?: string, follozeEditUrl?: string) {
+  const board = await getAccessManageableBoard(managerEmail, boardId);
   if (!board) return null;
-  const normalizedFollozeEditUrl = follozeEditUrl === undefined ? undefined : normalizeFollozeEditUrl(follozeEditUrl);
-  if (normalizedFollozeEditUrl === null) return null;
+  const isOwner = board.ownerEmail === normalizeEmail(managerEmail);
+  const normalizedFollozeEditUrl = isOwner && follozeEditUrl !== undefined ? normalizeFollozeEditUrl(follozeEditUrl) : undefined;
+  if (isOwner && normalizedFollozeEditUrl === null) return null;
   const previousAccess = accessEmails(board);
   const currentOwner = board.ownerEmail;
-  const nextOwner = nextOwnerEmail ? normalizeEmail(nextOwnerEmail) : currentOwner;
+  const nextOwner = isOwner && nextOwnerEmail ? normalizeEmail(nextOwnerEmail) : currentOwner;
   board.ownerEmail = nextOwner;
   board.sharedEmails = normalizeEmailList([
     ...sharedEmails,
     currentOwner === nextOwner ? '' : currentOwner
   ]).filter(email => email && email !== board.ownerEmail);
-  if (normalizedFollozeEditUrl !== undefined) {
+  if (isOwner && normalizedFollozeEditUrl !== undefined) {
     board.follozeEditUrl = normalizedFollozeEditUrl || undefined;
   }
   await saveBoard(board);
@@ -356,6 +368,13 @@ function hasBoardAccess(record: BoardRecord | null, email: string) {
   if (!normalized) return false;
   const normalizedEmail = normalizeEmail(email);
   return normalized.ownerEmail === normalizedEmail || Boolean(normalized.sharedEmails?.includes(normalizedEmail));
+}
+
+function canManageBoardAccess(record: BoardRecord | null, email: string) {
+  const normalized = normalizeBoard(record);
+  if (!normalized) return false;
+  const normalizedEmail = normalizeEmail(email);
+  return normalized.ownerEmail === normalizedEmail || (isFollozeEmail(normalizedEmail) && hasBoardAccess(normalized, normalizedEmail));
 }
 
 function accessEmails(record: BoardRecord) {

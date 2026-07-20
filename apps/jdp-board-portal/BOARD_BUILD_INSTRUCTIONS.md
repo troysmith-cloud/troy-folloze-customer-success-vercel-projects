@@ -20,7 +20,8 @@ The portal creates customer-specific Folloze Deployment Planning & Program Plann
 
 - email login and per-user board access
 - customer website-based board creation with company name and logo lookup
-- owner-only board rename, access management, Folloze edit link, and full delete
+- owner-only board rename, Folloze edit link, and full delete
+- access management by the board owner and by any authorized user with an exact `@folloze.com` email address
 - non-owner hide/remove-from-my-view without deleting the shared board
 - portal-first access so users must log in and choose an authorized board before opening it
 - local browser autosave plus durable Vercel Blob-backed board state
@@ -146,6 +147,15 @@ Owner permissions:
 - open the Folloze edit link
 - permanently delete the board
 - restore the board from the latest snapshot
+
+Authorized Folloze.com user permissions:
+
+- add/remove authorized emails and save the access list for any board they have already been added to
+- cannot rename the board
+- cannot transfer ownership
+- cannot change the Folloze edit URL
+- cannot permanently delete the board
+- cannot restore snapshots
 
 Shared-user permissions:
 
