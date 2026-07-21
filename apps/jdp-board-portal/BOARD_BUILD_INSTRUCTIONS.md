@@ -234,6 +234,7 @@ The template currently owns:
 - program creation, duplication, deletion, locking, and drag/drop
 - quarter/Evergreen grouping and fiscal-year sequencing
 - program priority labels and colors
+- user-resizable left Programs panel for showing more or fewer program rows
 - channel multi-select
 - primary/secondary content and audience fields
 - benchmark standard/custom mode

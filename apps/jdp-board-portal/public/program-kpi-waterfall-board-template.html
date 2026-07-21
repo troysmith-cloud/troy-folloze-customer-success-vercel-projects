@@ -389,9 +389,13 @@
     background: white;
   }
   .program-list {
+    display: flex;
+    flex-direction: column;
     padding: 14px;
     position: sticky;
     top: 92px;
+    min-height: 360px;
+    height: min(780px, calc(100vh - 116px));
     max-height: calc(100vh - 116px);
     overflow: hidden;
   }
@@ -411,10 +415,42 @@
   .list-actions button { flex: 1; }
   .program-tabs {
     display: grid;
+    flex: 1 1 auto;
     gap: 12px;
-    max-height: min(780px, calc(100vh - 220px));
+    min-height: 180px;
     overflow: auto;
     padding-right: 4px;
+  }
+  .program-panel-resizer {
+    flex: 0 0 auto;
+    margin: 10px -2px -4px;
+    border: 1px dashed rgba(0, 119, 255, .28);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(234, 247, 255, .82), rgba(255,255,255,.96));
+    color: var(--flz-blue);
+    cursor: ns-resize;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    line-height: 1;
+    padding: 8px;
+    text-align: center;
+    text-transform: uppercase;
+    touch-action: none;
+    user-select: none;
+  }
+  .program-panel-resizer::before {
+    content: "";
+    display: block;
+    width: 54px;
+    height: 3px;
+    margin: 0 auto 6px;
+    border-radius: 999px;
+    background: rgba(0, 119, 255, .32);
+  }
+  body.resizing-program-panel {
+    cursor: ns-resize;
+    user-select: none;
   }
   .program-quarter-group {
     display: grid;
@@ -1159,7 +1195,17 @@
 
   @media (max-width: 1080px) {
     .hero-inner, .builder-shell { grid-template-columns: 1fr; }
-    .program-list { position: static; }
+    .program-list {
+      position: static;
+      height: auto !important;
+      max-height: none;
+      overflow: visible;
+    }
+    .program-tabs {
+      max-height: none;
+      overflow: visible;
+    }
+    .program-panel-resizer { display: none; }
     .summary-grid, .sections-grid, .quarter-rollup, .campaign-rollup, .planner-settings { grid-template-columns: 1fr; }
     .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .actuals-grid, .tracking-strip, .program-value-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1364,6 +1410,7 @@
           <button class="ghost-btn" type="button" onclick="duplicateActiveProgram(this)">Duplicate</button>
         </div>
         <div class="program-tabs" id="programTabs" role="tablist" aria-label="Programs"></div>
+        <div class="program-panel-resizer" id="programPanelResizer" role="separator" aria-label="Resize programs panel" title="Drag to show more or fewer programs">Drag to resize</div>
       </aside>
 
       <div class="program-editor" id="programEditor" aria-live="polite"></div>
@@ -1571,6 +1618,87 @@
   function boardStateKey() {
     const path = `${window.location.origin || 'file'}${window.location.pathname || document.title}`;
     return `folloze-jdp-board-state:${path}`;
+  }
+
+  function programPanelPreferenceKey() {
+    return `${boardStateKey()}:program-panel-height`;
+  }
+
+  function programPanelHeightLimits() {
+    const available = Math.max(360, (window.innerHeight || 900) - 116);
+    return { min: 360, max: Math.min(1100, available) };
+  }
+
+  function clampProgramPanelHeight(value) {
+    const { min, max } = programPanelHeightLimits();
+    const numeric = Number(value) || 0;
+    return Math.max(min, Math.min(max, numeric));
+  }
+
+  function applyProgramPanelHeight(value, save = false) {
+    const panel = document.querySelector('.program-list');
+    if (!panel || window.matchMedia('(max-width: 1080px)').matches) return;
+    const height = clampProgramPanelHeight(value);
+    panel.style.height = `${height}px`;
+    if (save) {
+      try {
+        localStorage.setItem(programPanelPreferenceKey(), String(Math.round(height)));
+      } catch {
+        // Local view preference only; ignore storage failures.
+      }
+    }
+  }
+
+  function loadProgramPanelHeight() {
+    try {
+      return Number(localStorage.getItem(programPanelPreferenceKey())) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function setupProgramPanelResize() {
+    const panel = document.querySelector('.program-list');
+    const handle = document.getElementById('programPanelResizer');
+    if (!panel || !handle) return;
+    const savedHeight = loadProgramPanelHeight();
+    if (savedHeight) applyProgramPanelHeight(savedHeight);
+    let startY = 0;
+    let startHeight = 0;
+    let resizing = false;
+    const finishResize = event => {
+      if (!resizing) return;
+      resizing = false;
+      document.body.classList.remove('resizing-program-panel');
+      handle.releasePointerCapture?.(event.pointerId);
+      applyProgramPanelHeight(panel.getBoundingClientRect().height, true);
+      safeAnalytic('program_panel_resize', { text: 'Programs panel resized', area: 'program planner', value: String(Math.round(panel.getBoundingClientRect().height)) });
+    };
+    handle.addEventListener('pointerdown', event => {
+      if (window.matchMedia('(max-width: 1080px)').matches) return;
+      event.preventDefault();
+      resizing = true;
+      startY = event.clientY;
+      startHeight = panel.getBoundingClientRect().height;
+      document.body.classList.add('resizing-program-panel');
+      handle.setPointerCapture?.(event.pointerId);
+    });
+    handle.addEventListener('pointermove', event => {
+      if (!resizing) return;
+      event.preventDefault();
+      applyProgramPanelHeight(startHeight + event.clientY - startY);
+    });
+    handle.addEventListener('pointerup', finishResize);
+    handle.addEventListener('pointercancel', finishResize);
+    handle.addEventListener('dblclick', () => {
+      const defaultHeight = Math.min(780, programPanelHeightLimits().max);
+      applyProgramPanelHeight(defaultHeight, true);
+      safeAnalytic('program_panel_resize_reset', { text: 'Programs panel size reset', area: 'program planner', value: String(defaultHeight) });
+    });
+    window.addEventListener('resize', () => {
+      const currentHeight = panel.getBoundingClientRect().height;
+      applyProgramPanelHeight(currentHeight, false);
+    });
   }
 
   function canUseBoardStateEndpoint() {
@@ -3244,6 +3372,7 @@
     if (document.visibilityState === 'hidden') flushState({ keepalive: true });
   });
 
+  setupProgramPanelResize();
   if (!restoreLocalState()) render();
   loadRemoteState();
 </script>
