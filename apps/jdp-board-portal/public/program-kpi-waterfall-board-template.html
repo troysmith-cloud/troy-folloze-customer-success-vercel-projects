@@ -396,7 +396,7 @@
     top: 92px;
     min-height: 360px;
     height: min(780px, calc(100vh - 116px));
-    max-height: calc(100vh - 116px);
+    max-height: none;
     overflow: hidden;
   }
   .program-list-label {
@@ -928,6 +928,25 @@
     color: var(--flz-blue);
     font-size: 20px;
     line-height: 1.1;
+  }
+  .campaign-program-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .campaign-program-list span {
+    border: 1px solid var(--flz-line);
+    border-radius: 999px;
+    background: var(--flz-soft);
+    color: var(--flz-slate);
+    font-size: 11px;
+    font-weight: 800;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 5px 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .summary-band {
@@ -1625,8 +1644,7 @@
   }
 
   function programPanelHeightLimits() {
-    const available = Math.max(360, (window.innerHeight || 900) - 116);
-    return { min: 360, max: Math.min(1100, available) };
+    return { min: 360, max: 1800 };
   }
 
   function clampProgramPanelHeight(value) {
@@ -2126,18 +2144,23 @@
   }
 
   function campaignName(program) {
-    return (program.campaign || 'Unassigned campaign').trim() || 'Unassigned campaign';
+    return (program.campaign || 'No Campaign Name Entered').trim() || 'No Campaign Name Entered';
+  }
+
+  function campaignKey(program) {
+    return campaignName(program).replace(/\s+/g, ' ').trim().toLowerCase();
   }
 
   function campaignTotals() {
     const byCampaign = new Map();
     for (const program of programs) {
       const name = campaignName(program);
-      const group = byCampaign.get(name) || [];
-      group.push(program);
-      byCampaign.set(name, group);
+      const key = campaignKey(program);
+      const group = byCampaign.get(key) || { name, programs: [] };
+      group.programs.push(program);
+      byCampaign.set(key, group);
     }
-    return Array.from(byCampaign.entries()).map(([name, campaignPrograms]) => ({
+    return Array.from(byCampaign.values()).map(({ name, programs: campaignPrograms }) => ({
       name,
       programs: campaignPrograms,
       totals: totals(campaignPrograms)
@@ -2715,6 +2738,9 @@
         <h3>${escapeHtml(name)}</h3>
         <p>${whole.format(campaignPrograms.length)} programs · ${whole.format(campaignTotal.accounts)} scaled accounts · ${whole.format(campaignTotal.meetings)} meetings</p>
         <strong>${money(campaignTotal.pipelineGoal)} pipeline</strong>
+        <div class="campaign-program-list" aria-label="${escapeHtml(name)} programs">
+          ${campaignPrograms.map(program => `<span>${escapeHtml(program.quarter || 'Q1')} · ${escapeHtml(program.name || program.type || 'Program')}</span>`).join('')}
+        </div>
       </article>
     `).join('');
     document.getElementById('portfolioCards').innerHTML = [

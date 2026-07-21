@@ -234,12 +234,12 @@ The template currently owns:
 - program creation, duplication, deletion, locking, and drag/drop
 - quarter/Evergreen grouping and fiscal-year sequencing
 - program priority labels and colors
-- user-resizable left Programs panel for showing more or fewer program rows
+- user-resizable left Programs panel for showing more or fewer program rows, including dragging larger than the visible viewport when users want to see more programs
 - channel multi-select
 - primary/secondary content and audience fields
 - benchmark standard/custom mode
 - account scale slider
-- campaign rollups
+- campaign rollups that combine programs by normalized campaign name and use `No Campaign Name Entered` when the campaign field is blank
 - projected and actual KPI calculations
 - waterfall visuals
 - PDF export
