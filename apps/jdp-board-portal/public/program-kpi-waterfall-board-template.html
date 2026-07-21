@@ -392,6 +392,8 @@
     padding: 14px;
     position: sticky;
     top: 92px;
+    max-height: calc(100vh - 116px);
+    overflow: hidden;
   }
   .program-list-label {
     margin: 0 0 10px;
@@ -410,7 +412,7 @@
   .program-tabs {
     display: grid;
     gap: 12px;
-    max-height: 548px;
+    max-height: min(780px, calc(100vh - 220px));
     overflow: auto;
     padding-right: 4px;
   }
