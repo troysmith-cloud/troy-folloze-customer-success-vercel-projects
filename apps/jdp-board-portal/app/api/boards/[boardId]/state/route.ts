@@ -68,10 +68,11 @@ function sanitizeProgramsForSave(existingPrograms: Array<Record<string, unknown>
     const isCreator = viewer === creator;
     const canEdit = !Boolean(existingProgram.locked) && (Boolean(existingProgram.allowAnyoneEdit) || isOwner || isCreator);
     const canManageLock = isOwner || isCreator;
+    const canManageProgramAccess = isOwner || isCreator;
 
     const nextProgram = canEdit ? { ...incomingProgram } : { ...existingProgram };
     nextProgram.createdByEmail = creator;
-    nextProgram.allowAnyoneEdit = isOwner ? Boolean(incomingProgram.allowAnyoneEdit) : Boolean(existingProgram.allowAnyoneEdit);
+    nextProgram.allowAnyoneEdit = canManageProgramAccess ? Boolean(incomingProgram.allowAnyoneEdit) : Boolean(existingProgram.allowAnyoneEdit);
     nextProgram.locked = canManageLock ? Boolean(incomingProgram.locked) : Boolean(existingProgram.locked);
     return nextProgram;
   });

@@ -1758,7 +1758,7 @@
   }
 
   function canManageProgramAccess(program) {
-    return Boolean(program && isBoardOwner());
+    return Boolean(program && (isBoardOwner() || isProgramCreator(program)));
   }
 
   function programAccessLabel(program) {

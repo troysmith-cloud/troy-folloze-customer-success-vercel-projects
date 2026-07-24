@@ -168,7 +168,7 @@ Program-level edit rules:
 
 - The creator of a program can edit that program.
 - The board owner can edit any program.
-- If the owner toggles `Anyone can edit` for a program, all authorized board users can edit that program.
+- If the board owner or the program creator toggles `Anyone can edit` for a program, all authorized board users can edit that program.
 - All authorized users can reorder programs from the left program list.
 - Locked programs prevent detail changes until unlocked by an authorized editor.
 
