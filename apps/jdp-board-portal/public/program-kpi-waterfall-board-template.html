@@ -1407,8 +1407,8 @@
         </select>
       </div>
       <div class="field">
-        <label>Quarter order</label>
-        <input id="quarterOrderPreview" type="text" value="Q1 -> Q2 -> Q3 -> Q4" readonly>
+        <label>Period order</label>
+        <input id="quarterOrderPreview" type="text" value="2026 Q1 -> 2026 Q2 -> 2026 Q3 -> 2026 Q4 -> 2026 Evergreen" readonly>
       </div>
     </div>
 
@@ -2037,8 +2037,17 @@
     return [...quarterSequence(), 'Evergreen'];
   }
 
+  function periodDisplayYear(year, quarter) {
+    const baseYear = Number(year || planSettings.activeYear);
+    if (!Number.isFinite(baseYear) || !fiscalQuarters.includes(quarter || 'Q1')) return String(year || planSettings.activeYear);
+    const startIndex = fiscalQuarters.indexOf(planSettings.startQuarter);
+    const quarterIndex = fiscalQuarters.indexOf(quarter || 'Q1');
+    return String(baseYear + (startIndex > 0 && quarterIndex >= 0 && quarterIndex < startIndex ? 1 : 0));
+  }
+
   function periodLabel(year, quarter) {
-    return `${year || planSettings.activeYear} ${quarter || 'Q1'}`;
+    const period = quarter || 'Q1';
+    return `${periodDisplayYear(year, period)} ${period}`;
   }
 
   function fiscalQuarterIndex(quarter) {
@@ -2170,6 +2179,7 @@
   function periodDefinitions() {
     return programYears.flatMap(year => periodSequence().map(quarter => ({
       year,
+      displayYear: periodDisplayYear(year, quarter),
       quarter,
       label: periodLabel(year, quarter)
     })));
@@ -2189,7 +2199,12 @@
 
   function cumulativeQuarterTotals() {
     let running = [];
+    let runningYear = null;
     return visiblePeriodTotals().map(period => {
+      if (runningYear !== period.year) {
+        running = [];
+        runningYear = period.year;
+      }
       running = running.concat(period.programs);
       return { ...period, totals: totals(running) };
     });
@@ -2708,7 +2723,7 @@
     const orderPreview = document.getElementById('quarterOrderPreview');
     const activeYear = document.getElementById('plan-activeYear');
     const startQuarter = document.getElementById('plan-startQuarter');
-    if (orderPreview) orderPreview.value = quarterSequence().join(' -> ');
+    if (orderPreview) orderPreview.value = periodSequence().map(quarter => periodLabel(planSettings.activeYear, quarter)).join(' -> ');
     if (activeYear) activeYear.value = planSettings.activeYear;
     if (startQuarter) startQuarter.value = planSettings.startQuarter;
     document.getElementById('totalPrograms').textContent = whole.format(programs.length);
@@ -2739,7 +2754,7 @@
         <p>${whole.format(campaignPrograms.length)} programs · ${whole.format(campaignTotal.accounts)} scaled accounts · ${whole.format(campaignTotal.meetings)} meetings</p>
         <strong>${money(campaignTotal.pipelineGoal)} pipeline</strong>
         <div class="campaign-program-list" aria-label="${escapeHtml(name)} programs">
-          ${campaignPrograms.map(program => `<span>${escapeHtml(program.quarter || 'Q1')} · ${escapeHtml(program.name || program.type || 'Program')}</span>`).join('')}
+          ${campaignPrograms.map(program => `<span>${escapeHtml(periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'))} · ${escapeHtml(program.name || program.type || 'Program')}</span>`).join('')}
         </div>
       </article>
     `).join('');
@@ -2752,7 +2767,7 @@
     ].map(([title, rows]) => `<article class="summary-card"><h3>${title}</h3><dl>${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl></article>`).join('');
     const quarterly = visiblePeriods;
     const cumulative = cumulativeQuarterTotals();
-    const quarterAndYtdRows = quarterly.map(({ label, totals: qt }, index) => {
+    const quarterAndYtdRows = quarterly.map(({ year, label, totals: qt }, index) => {
       const quarterRow = `
         <tr>
           <td>${label} only</td>
@@ -2768,7 +2783,9 @@
           <td>${money(qt.bookings)}</td>
           <td>${money(qt.actualBookings)}</td>
         </tr>`;
-      if (index === 0 || index === quarterly.length - 1) return quarterRow;
+      const firstIndexForYear = quarterly.findIndex(period => period.year === year);
+      const lastIndexForYear = quarterly.map(period => period.year).lastIndexOf(year);
+      if (index === firstIndexForYear || index === lastIndexForYear) return quarterRow;
       const ytd = cumulative[index].totals;
       return `${quarterRow}
         <tr class="ytd-row">
@@ -2806,7 +2823,7 @@
     image.setAttribute('height', '620');
     image.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     if (caption) {
-      caption.textContent = `${whole.format(t.programs)} programs modeled across ${periodSequence().join('-')} · ${whole.format(t.projectedBoards)} projected live boards · ${whole.format(t.actualLiveBoards)} published boards · ${money(t.pipelineGoal)} projected pipeline · ${money(t.actualPipelineGoal)} actual pipeline.`;
+      caption.textContent = `${whole.format(t.programs)} programs modeled across ${periodSequence().map(quarter => periodLabel(planSettings.activeYear, quarter)).join(' - ')} · ${whole.format(t.projectedBoards)} projected live boards · ${whole.format(t.actualLiveBoards)} published boards · ${money(t.pipelineGoal)} projected pipeline · ${money(t.actualPipelineGoal)} actual pipeline.`;
     }
   }
 
@@ -2923,12 +2940,18 @@
       exportedAt: new Date().toISOString(),
       customerHeadline: document.getElementById('hero-title').textContent.trim(),
       customerSuccessManager: selectedCsm,
-      planSettings: { ...planSettings, quarterOrder: quarterSequence() },
+      planSettings: {
+        ...planSettings,
+        quarterOrder: quarterSequence(),
+        periodOrder: periodSequence().map(quarter => periodLabel(planSettings.activeYear, quarter))
+      },
       slidesDeckUrl,
       sheetsOutputUrl,
       fullYear,
-      quarters: visiblePeriodTotals().map(({ year, quarter, label, programs: quarterPrograms, totals: qt }) => ({
+      quarters: visiblePeriodTotals().map(({ year, displayYear, quarter, label, programs: quarterPrograms, totals: qt }) => ({
         year,
+        fiscalYear: year,
+        displayYear,
         quarter,
         label,
         programCount: quarterPrograms.length,
@@ -2945,6 +2968,8 @@
         index: index + 1,
         id: program.id,
         programYear: String(program.programYear || planSettings.activeYear),
+        fiscalYear: String(program.programYear || planSettings.activeYear),
+        displayYear: periodDisplayYear(program.programYear || planSettings.activeYear, program.quarter || 'Q1'),
         quarter: program.quarter || 'Q1',
         period: periodLabel(program.programYear || planSettings.activeYear, program.quarter || 'Q1'),
         type: program.type,
@@ -2979,7 +3004,7 @@
       'Std Pipeline %', 'Std Close %', 'Custom In-Market %', 'Custom Engage %', 'Custom Meeting %', 'Custom Pipeline %',
       'Custom Close %', 'Selected In-Market %', 'Selected Engage %', 'Selected Meeting %', 'Selected Pipeline %',
       'Selected Close %', 'Accounts In Market', 'Engaged Accounts', 'Sales Meetings', 'Pipeline Opps', 'Closed Deals',
-      'Pipeline Goal', 'Bookings', 'Quarter', 'Program Year', 'Projected Live Boards', 'Published Boards', 'Actual Engaged',
+      'Pipeline Goal', 'Bookings', 'Quarter', 'Program Year', 'Display Year', 'Projected Live Boards', 'Published Boards', 'Actual Engaged',
       'Actual Meetings', 'Actual Pipeline Opps', 'Actual Closed Deals', 'Actual Pipeline', 'Actual Bookings',
       'Published Board Attainment', 'Pipeline Attainment', 'Bookings Attainment'
     ];
@@ -3034,6 +3059,7 @@
             program.calculations.bookings,
             program.quarter,
             program.programYear,
+            program.displayYear,
             program.calculations.projectedBoards,
             program.calculations.actual.liveBoards,
             program.calculations.actual.engaged,
@@ -3054,6 +3080,7 @@
             programName: program.name,
             description: program.notes,
             programYear: program.programYear,
+            displayYear: program.displayYear,
             quarter: program.quarter,
             period: program.period,
             priority: program.priority,

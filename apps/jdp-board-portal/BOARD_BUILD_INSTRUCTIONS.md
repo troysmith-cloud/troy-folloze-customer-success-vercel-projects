@@ -233,6 +233,7 @@ The template currently owns:
 
 - program creation, duplication, deletion, locking, and drag/drop
 - quarter/Evergreen grouping and fiscal-year sequencing
+- calendar-year rollover for wrapped fiscal quarters, such as showing `2027 Q1` inside a 2026 plan that starts in Q2
 - program priority labels and colors
 - user-resizable left Programs panel for showing more or fewer program rows, including dragging larger than the visible viewport when users want to see more programs
 - channel multi-select
@@ -351,7 +352,7 @@ Run this checklist before deployment:
 - confirm shared users can edit allowed programs and cannot edit restricted programs
 - confirm any input change autosaves and is visible after reopen
 - confirm quarter-only, Evergreen, YTD, and full-year sections calculate correctly
-- confirm Q2 company-year start wraps Q1 to the end
+- confirm Q2 company-year start wraps Q1 to the end and displays it as the next calendar year
 - confirm custom benchmark changes switch mode to Custom
 - confirm toggling back to Standard resets metrics to standard benchmarks
 - confirm PDF export downloads and the cumulative waterfall is not cropped
