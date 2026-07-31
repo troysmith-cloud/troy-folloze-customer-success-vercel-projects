@@ -2,6 +2,9 @@ import { notFound, redirect } from 'next/navigation';
 import { getSession, setPortalBoardSelection } from '../../../lib/auth';
 import { ensureDailyBoardSnapshot, getBoard, recordBoardAccess } from '../../../lib/storage';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
   const session = await getSession();
   if (!session) redirect('/login');
@@ -14,7 +17,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
   return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/boards/${encodeURIComponent(boardId)}/skill"><title>Opening board</title></head><body><p>Opening board...</p><script>window.location.replace('/boards/${encodeURIComponent(boardId)}/skill');</script></body></html>`, {
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'private, no-store'
+      'cache-control': 'private, no-store, no-cache, must-revalidate, proxy-revalidate',
+      pragma: 'no-cache',
+      expires: '0'
     }
   });
 }

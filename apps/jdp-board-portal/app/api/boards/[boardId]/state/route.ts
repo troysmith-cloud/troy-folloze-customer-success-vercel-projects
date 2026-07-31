@@ -7,13 +7,22 @@ const stateSchema = z.object({
   programs: z.array(z.record(z.unknown()))
 }).passthrough();
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const noStoreHeaders = {
+  'cache-control': 'private, no-store, no-cache, must-revalidate, proxy-revalidate',
+  pragma: 'no-cache',
+  expires: '0'
+};
+
 export async function GET(_request: Request, { params }: { params: Promise<{ boardId: string }> }) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: noStoreHeaders });
   const { boardId } = await params;
   const board = await getBoard(session.email, boardId);
-  if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json({ state: board.state, board });
+  if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404, headers: noStoreHeaders });
+  return NextResponse.json({ state: board.state, board }, { headers: noStoreHeaders });
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
@@ -26,14 +35,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ boa
 
 async function saveBoardState(request: Request, { params }: { params: Promise<{ boardId: string }> }) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: noStoreHeaders });
   const { boardId } = await params;
   const board = await getBoard(session.email, boardId);
-  if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404, headers: noStoreHeaders });
 
   const parsed = stateSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid board state' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid board state' }, { status: 400, headers: noStoreHeaders });
   }
 
   board.state = {
@@ -43,7 +52,7 @@ async function saveBoardState(request: Request, { params }: { params: Promise<{ 
     updatedAt: new Date().toISOString()
   };
   await saveBoard(board);
-  return NextResponse.json({ ok: true, updatedAt: board.updatedAt });
+  return NextResponse.json({ ok: true, updatedAt: board.updatedAt }, { headers: noStoreHeaders });
 }
 
 function sanitizeProgramsForSave(existingPrograms: Array<Record<string, unknown>>, incomingPrograms: Array<Record<string, unknown>>, viewerEmail: string, ownerEmail: string) {
