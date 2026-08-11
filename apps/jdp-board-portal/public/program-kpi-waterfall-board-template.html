@@ -686,6 +686,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
+  .program-editor-sections {
+    display: grid;
+    gap: 12px;
+  }
   .field, .wide-field {
     display: grid;
     gap: 6px;
@@ -897,8 +901,6 @@
   }
   .benchmarks {
     margin-top: 18px;
-    padding-top: 18px;
-    border-top: 1px solid var(--flz-line);
   }
   .benchmark-head {
     display: flex;
@@ -1921,8 +1923,14 @@
 
   function normalizeCollapsedSections(collapsedSections = {}) {
     return {
+      setup: Boolean(collapsedSections.setup),
       campaign: Boolean(collapsedSections.campaign),
       segment: Boolean(collapsedSections.segment),
+      channels: Boolean(collapsedSections.channels),
+      content: Boolean(collapsedSections.content),
+      assumptions: Boolean(collapsedSections.assumptions),
+      benchmarks: Boolean(collapsedSections.benchmarks),
+      notes: Boolean(collapsedSections.notes),
       actuals: Boolean(collapsedSections.actuals)
     };
   }
@@ -2803,47 +2811,54 @@
           ${ownerAccessControl}
         </div>
       </div>
-      <div class="editor-grid">
-        ${selectField(program, 'programYear', 'Program Year', String(program.programYear || planSettings.activeYear), programYears)}
-        ${selectField(program, 'quarter', 'Quarter', program.quarter || 'Q1', programPeriods)}
-        ${selectField(program, 'type', '+ Program Type', program.type, programTypes)}
-        ${prioritySelectField(program)}
-        ${inputField(program, 'name', 'Program Name', program.name, 'text', { wide: true })}
-        <div class="editor-collapse-wide">
-          ${collapsibleSection(program, 'campaign', 'Campaign', 'Group related programs together for rollup reporting.', inputField(program, 'campaign', 'Campaign', program.campaign || '', 'text', { wide: true }))}
-        </div>
-        <div class="editor-collapse-wide">
-          ${collapsibleSection(program, 'segment', 'Segment / Audience', 'Capture primary audience and sub-category details for this program.', `
-            <div class="collapsible-grid">
-              ${inputField(program, 'segment', 'Primary Segment/Audience', program.segment, 'text')}
-              ${inputField(program, 'subSegment', 'Sub Category Segment/Audience', program.subSegment, 'text')}
-            </div>
-          `)}
-        </div>
-        ${channelField(program)}
-        ${selectField(program, 'content', 'Primary Content / Messaging', program.content || 'Thought leadership', contentCategories)}
-        ${selectField(program, 'secondaryContent', 'Secondary Content / Messaging', program.secondaryContent || 'Solution proof', contentCategories)}
-        ${selectField(program, 'mode', 'Benchmark Mode', isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard', ['Standard', customerBenchmarkMode])}
-        ${inputField(program, 'accounts', 'Base Accounts Targeted', program.accounts, 'number', { min: 0, step: 1 })}
-        ${accountScaleField(program)}
-        ${accountScaleImpactStrip(program)}
-        ${inputField(program, 'dealSize', 'Average Deal Size', program.dealSize, 'number', { min: 0, step: 1000 })}
-        ${inputField(program, 'projectedBoards', 'Projected Live Boards', program.projectedBoards || 0, 'number', { min: 0, step: 1 })}
-        ${textareaField(program, 'notes', 'Notes', program.notes)}
-      </div>
-      <div class="benchmarks">
-        <div class="benchmark-head">
-          <h3>${isCustomerBenchmarkMode(program.mode) ? 'Custom benchmarks' : 'Standard benchmarks'}</h3>
-          <button class="ghost-btn" type="button" ${canEdit ? '' : 'disabled'} onclick="resetBenchmarks('${program.id}', this)">Reset to standard</button>
-        </div>
-        <div class="benchmark-grid">
-          ${inputField(program, 'custom.inMarket', 'In market %', Math.round(program.custom.inMarket * 100), 'number', { min: 0, step: 1 })}
-          ${inputField(program, 'custom.engaged', 'Engage %', Math.round(program.custom.engaged * 100), 'number', { min: 0, step: 1 })}
-          ${inputField(program, 'custom.meeting', 'Meeting %', Math.round(program.custom.meeting * 100), 'number', { min: 0, step: 1 })}
-          ${inputField(program, 'custom.pipeline', 'Pipeline %', Math.round(program.custom.pipeline * 100), 'number', { min: 0, step: 1 })}
-          ${inputField(program, 'custom.close', 'Close %', Math.round(program.custom.close * 100), 'number', { min: 0, step: 1 })}
-        </div>
-        <p class="hint">Editing any benchmark automatically switches Benchmark Mode to Custom. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.</p>
+      <div class="program-editor-sections">
+        ${collapsibleSection(program, 'setup', 'Program setup', 'Name, timing, type, and priority for this program.', `
+          <div class="editor-grid">
+            ${selectField(program, 'programYear', 'Program Year', String(program.programYear || planSettings.activeYear), programYears)}
+            ${selectField(program, 'quarter', 'Quarter', program.quarter || 'Q1', programPeriods)}
+            ${selectField(program, 'type', '+ Program Type', program.type, programTypes)}
+            ${prioritySelectField(program)}
+            ${inputField(program, 'name', 'Program Name', program.name, 'text', { wide: true })}
+          </div>
+        `)}
+        ${collapsibleSection(program, 'campaign', 'Campaign', 'Group related programs together for rollup reporting.', inputField(program, 'campaign', 'Campaign', program.campaign || '', 'text', { wide: true }))}
+        ${collapsibleSection(program, 'segment', 'Segment / Audience', 'Capture primary audience and sub-category details for this program.', `
+          <div class="collapsible-grid">
+            ${inputField(program, 'segment', 'Primary Segment/Audience', program.segment, 'text')}
+            ${inputField(program, 'subSegment', 'Sub Category Segment/Audience', program.subSegment, 'text')}
+          </div>
+        `)}
+        ${collapsibleSection(program, 'channels', 'Channels', 'Select the marketing channels included in this program.', channelField(program))}
+        ${collapsibleSection(program, 'content', 'Content / Messaging', 'Choose primary and secondary content or messaging categories.', `
+          <div class="collapsible-grid">
+            ${selectField(program, 'content', 'Primary Content / Messaging', program.content || 'Thought leadership', contentCategories)}
+            ${selectField(program, 'secondaryContent', 'Secondary Content / Messaging', program.secondaryContent || 'Solution proof', contentCategories)}
+          </div>
+        `)}
+        ${collapsibleSection(program, 'assumptions', 'Model assumptions', 'Set the benchmark mode, account volume, scale, deal size, and projected board count.', `
+          <div class="editor-grid">
+            ${selectField(program, 'mode', 'Benchmark Mode', isCustomerBenchmarkMode(program.mode) ? customerBenchmarkMode : 'Standard', ['Standard', customerBenchmarkMode])}
+            ${inputField(program, 'accounts', 'Base Accounts Targeted', program.accounts, 'number', { min: 0, step: 1 })}
+            ${accountScaleField(program)}
+            ${accountScaleImpactStrip(program)}
+            ${inputField(program, 'dealSize', 'Average Deal Size', program.dealSize, 'number', { min: 0, step: 1000 })}
+            ${inputField(program, 'projectedBoards', 'Projected Live Boards', program.projectedBoards || 0, 'number', { min: 0, step: 1 })}
+          </div>
+        `)}
+        ${collapsibleSection(program, 'benchmarks', isCustomerBenchmarkMode(program.mode) ? 'Custom benchmarks' : 'Standard benchmarks', 'Editing any benchmark automatically switches Benchmark Mode to Custom. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.', `
+          <div class="benchmark-head">
+            <span></span>
+            <button class="ghost-btn" type="button" ${canEdit ? '' : 'disabled'} onclick="resetBenchmarks('${program.id}', this)">Reset to standard</button>
+          </div>
+          <div class="benchmark-grid">
+            ${inputField(program, 'custom.inMarket', 'In market %', Math.round(program.custom.inMarket * 100), 'number', { min: 0, step: 1 })}
+            ${inputField(program, 'custom.engaged', 'Engage %', Math.round(program.custom.engaged * 100), 'number', { min: 0, step: 1 })}
+            ${inputField(program, 'custom.meeting', 'Meeting %', Math.round(program.custom.meeting * 100), 'number', { min: 0, step: 1 })}
+            ${inputField(program, 'custom.pipeline', 'Pipeline %', Math.round(program.custom.pipeline * 100), 'number', { min: 0, step: 1 })}
+            ${inputField(program, 'custom.close', 'Close %', Math.round(program.custom.close * 100), 'number', { min: 0, step: 1 })}
+          </div>
+        `)}
+        ${collapsibleSection(program, 'notes', 'Notes', 'Capture planning context or execution notes for this program.', textareaField(program, 'notes', 'Notes', program.notes))}
       </div>
       <div class="actuals-panel">
         ${collapsibleSection(program, 'actuals', 'Actuals against projection', 'Populate actuals as programs launch. Attainment compares each actual value against the current modeled benchmark output.', `
