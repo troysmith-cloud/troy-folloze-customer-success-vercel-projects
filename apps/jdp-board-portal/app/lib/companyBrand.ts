@@ -163,7 +163,7 @@ function logosFromImages(html: string, baseUrl: string) {
   return candidates;
 }
 
-function preferredWebsiteLogo(html: string, baseUrl: string) {
+function websiteBrandCandidates(html: string, baseUrl: string) {
   const jsonLd = brandFromJsonLd(html, baseUrl);
   const candidates = [
     ...jsonLd.logos,
@@ -173,7 +173,7 @@ function preferredWebsiteLogo(html: string, baseUrl: string) {
   const unique = candidates.filter((candidate, index, all) => all.findIndex(item => item.url === candidate.url) === index);
   return {
     name: jsonLd.name || nameFromTitle(html),
-    logo: unique[0] || null
+    logos: unique
   };
 }
 
@@ -197,7 +197,21 @@ async function resolveWebsiteBrand(domain: string, signal: AbortSignal): Promise
   });
   if (!response.ok) return null;
   const html = await response.text();
-  return preferredWebsiteLogo(html, response.url || baseUrl);
+  const brand = websiteBrandCandidates(html, response.url || baseUrl);
+  const logo = await firstReachableLogo(brand.logos, signal);
+  return { name: brand.name, logo: logo || undefined };
+}
+
+async function firstReachableLogo(candidates: WebsiteLogo[], signal: AbortSignal) {
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate.url, { method: 'HEAD', signal });
+      if (response.ok) return candidate;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 async function suggestCompany(query: string, signal: AbortSignal) {
