@@ -10,6 +10,16 @@ type ClearbitCompany = {
   domain?: string;
 };
 
+type WebsiteLogo = {
+  url: string;
+  includesName: boolean;
+};
+
+type WebsiteBrand = {
+  name?: string;
+  logo?: WebsiteLogo;
+};
+
 function normalizeCompany(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
@@ -60,6 +70,134 @@ function isLikelyMatch(query: string, company: ClearbitCompany) {
 
 function faviconLogoUrl(domain: string) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=256`;
+}
+
+function websiteUrlFromDomain(domain: string) {
+  return `https://${domain}/`;
+}
+
+function absolutizeUrl(value: string, baseUrl: string) {
+  const clean = decodeHtmlEntities(value).trim();
+  if (!clean || clean.startsWith('data:') || clean.startsWith('blob:')) return '';
+  try {
+    return new URL(clean, baseUrl).toString();
+  } catch {
+    return '';
+  }
+}
+
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function attributesFromTag(tag: string) {
+  const attributes: Record<string, string> = {};
+  for (const match of tag.matchAll(/([a-zA-Z_:.-]+)\s*=\s*(['"])(.*?)\2/g)) {
+    attributes[match[1].toLowerCase()] = decodeHtmlEntities(match[3]);
+  }
+  return attributes;
+}
+
+function logoIncludesCompanyName(url: string, label = '') {
+  const combined = `${url} ${label}`.toLowerCase();
+  return /wordmark|logo|brand|tru-logo|horizontal/.test(combined);
+}
+
+function addLogoCandidate(candidates: WebsiteLogo[], value: string, baseUrl: string, label = '') {
+  const url = absolutizeUrl(value, baseUrl);
+  if (!url) return;
+  const lower = `${url} ${label}`.toLowerCase();
+  if (!/logo|brand|wordmark/.test(lower)) return;
+  if (!/\.(svg|png|jpe?g|webp)(\?|#|$)/i.test(url)) return;
+  candidates.push({ url, includesName: logoIncludesCompanyName(url, label) });
+}
+
+function brandFromJsonLd(html: string, baseUrl: string) {
+  const candidates: WebsiteLogo[] = [];
+  let name = '';
+  for (const script of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const payload = JSON.parse(decodeHtmlEntities(script[1].trim()));
+      const nodes = Array.isArray(payload?.['@graph']) ? payload['@graph'] : [payload];
+      for (const node of nodes) {
+        const type = Array.isArray(node?.['@type']) ? node['@type'].join(' ') : String(node?.['@type'] || '');
+        if (!name && /organization|corporation|localbusiness|website/i.test(type) && typeof node?.name === 'string') {
+          name = node.name.trim();
+        }
+        const logo = node?.logo;
+        if (typeof logo === 'string') addLogoCandidate(candidates, logo, baseUrl, node?.name || '');
+        if (typeof logo?.url === 'string') addLogoCandidate(candidates, logo.url, baseUrl, node?.name || '');
+      }
+    } catch {
+      continue;
+    }
+  }
+  return { name, logos: candidates };
+}
+
+function logosFromMeta(html: string, baseUrl: string) {
+  const candidates: WebsiteLogo[] = [];
+  for (const tag of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const attributes = attributesFromTag(tag[0]);
+    const key = (attributes.property || attributes.name || attributes.itemprop || '').toLowerCase();
+    if (key.includes('logo') && attributes.content) {
+      addLogoCandidate(candidates, attributes.content, baseUrl, key);
+    }
+  }
+  return candidates;
+}
+
+function logosFromImages(html: string, baseUrl: string) {
+  const candidates: WebsiteLogo[] = [];
+  for (const tag of html.matchAll(/<img\b[^>]*>/gi)) {
+    const attributes = attributesFromTag(tag[0]);
+    const label = [attributes.alt, attributes.class, attributes.id, attributes.src].filter(Boolean).join(' ');
+    addLogoCandidate(candidates, attributes.src || attributes['data-src'] || '', baseUrl, label);
+  }
+  return candidates;
+}
+
+function preferredWebsiteLogo(html: string, baseUrl: string) {
+  const jsonLd = brandFromJsonLd(html, baseUrl);
+  const candidates = [
+    ...jsonLd.logos,
+    ...logosFromMeta(html, baseUrl),
+    ...logosFromImages(html, baseUrl)
+  ];
+  const unique = candidates.filter((candidate, index, all) => all.findIndex(item => item.url === candidate.url) === index);
+  return {
+    name: jsonLd.name || nameFromTitle(html),
+    logo: unique[0] || null
+  };
+}
+
+function nameFromTitle(html: string) {
+  const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  if (!title) return '';
+  return decodeHtmlEntities(title)
+    .replace(/\s+[|–-]\s+.*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function resolveWebsiteBrand(domain: string, signal: AbortSignal): Promise<WebsiteBrand | null> {
+  const baseUrl = websiteUrlFromDomain(domain);
+  const response = await fetch(baseUrl, {
+    headers: {
+      accept: 'text/html,application/xhtml+xml',
+      'user-agent': 'Mozilla/5.0 (compatible; FollozeBoardLogoResolver/1.0)'
+    },
+    signal
+  });
+  if (!response.ok) return null;
+  const html = await response.text();
+  return preferredWebsiteLogo(html, response.url || baseUrl);
 }
 
 async function suggestCompany(query: string, signal: AbortSignal) {
@@ -113,24 +251,27 @@ export async function resolveCompanyBrandFromWebsite(customerWebsite: string): P
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3500);
   try {
+    const websiteBrand = await resolveWebsiteBrand(domain, controller.signal).catch(() => null);
     const queries = Array.from(new Set([domain, domainRoot(domain)].filter(Boolean)));
     for (const query of queries) {
       const companies = await suggestCompany(query, controller.signal);
       const match = companies.find(company => {
         const companyDomain = cleanDomain(company.domain || '');
-        return companyDomain === domain || isLikelyMatch(query, company);
+        return companyDomain === domain;
       });
       if (match?.domain) {
         const matchedDomain = cleanDomain(match.domain);
         return {
-          name: match.name || fallback.name,
-          domain: matchedDomain || domain,
-          logoUrl: faviconLogoUrl(matchedDomain || domain),
-          logoIncludesName: false
+          name: websiteBrand?.name || match.name || fallback.name,
+          domain,
+          logoUrl: websiteBrand?.logo?.url || faviconLogoUrl(domain),
+          logoIncludesName: Boolean(websiteBrand?.logo?.includesName)
         };
       }
     }
-    return fallback;
+    return websiteBrand?.logo
+      ? { ...fallback, name: websiteBrand.name || fallback.name, logoUrl: websiteBrand.logo.url, logoIncludesName: websiteBrand.logo.includesName }
+      : fallback;
   } catch {
     return fallback;
   } finally {
