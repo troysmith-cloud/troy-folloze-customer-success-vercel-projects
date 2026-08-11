@@ -30,12 +30,14 @@ const customerLogos = [
   {
     matches: ({ customerName }: BoardRecord) => customerName.trim().toLowerCase() === 'conga',
     markup: '<img class="customer-logo" src="/conga-logo.png" alt="Conga logo">',
-    includesName: true
+    includesName: true,
+    needsContrast: false
   },
   {
     matches: ({ id, customerName }: BoardRecord) => id === '3b6ca55b-339f-4f67-8a9d-209bdfbd241c' || customerName.trim().toLowerCase() === 'slb',
     markup: '<img class="customer-logo" src="/slb-logo.svg" alt="SLB logo">',
-    includesName: true
+    includesName: true,
+    needsContrast: false
   }
 ];
 
@@ -52,7 +54,8 @@ function savedCustomerLogo(board: BoardRecord) {
     const alt = (board.customerLogoAlt || `${board.customerName} logo`).trim();
     return {
       markup: `<img class="customer-logo" src="${escapeAttribute(parsed.toString())}" alt="${escapeAttribute(alt)}">`,
-      includesName: Boolean(board.customerLogoIncludesName)
+      includesName: Boolean(board.customerLogoIncludesName),
+      needsContrast: Boolean(board.customerLogoNeedsContrast)
     };
   } catch {
     return null;
@@ -67,14 +70,16 @@ export async function renderSkillBoardHtml(board: BoardRecord, viewerEmail = '')
   const savedLogo = savedCustomerLogo(board);
   const logo = savedLogo || customerLogo || {
     markup: '<div class="customer-logo-placeholder" aria-hidden="true"></div>',
-    includesName: false
+    includesName: false,
+    needsContrast: false
   };
   const customerLogoMarkup = logo.markup;
   const hasCustomerLogo = customerLogoMarkup.includes('class="customer-logo"');
   const customerPlaceholderClass = [
     'customer-placeholder',
     hasCustomerLogo ? 'has-logo' : '',
-    logo.includesName ? 'logo-includes-name' : ''
+    logo.includesName ? 'logo-includes-name' : '',
+    logo.needsContrast ? 'logo-needs-contrast' : ''
   ].filter(Boolean).join(' ');
 
   html = html

@@ -3,6 +3,7 @@ export type CompanyBrand = {
   domain: string;
   logoUrl: string;
   logoIncludesName?: boolean;
+  logoNeedsContrast?: boolean;
 };
 
 type ClearbitCompany = {
@@ -13,6 +14,7 @@ type ClearbitCompany = {
 type WebsiteLogo = {
   url: string;
   includesName: boolean;
+  needsContrast?: boolean;
 };
 
 type WebsiteBrand = {
@@ -109,13 +111,22 @@ function logoIncludesCompanyName(url: string, label = '') {
   return /wordmark|logo|brand|tru-logo|horizontal/.test(combined);
 }
 
+function logoNeedsContrast(url: string, label = '') {
+  const combined = `${url} ${label}`.toLowerCase();
+  return /white|light|inverse|reversed|dark/.test(combined);
+}
+
 function addLogoCandidate(candidates: WebsiteLogo[], value: string, baseUrl: string, label = '') {
   const url = absolutizeUrl(value, baseUrl);
   if (!url) return;
   const lower = `${url} ${label}`.toLowerCase();
   if (!/logo|brand|wordmark/.test(lower)) return;
   if (!/\.(svg|png|jpe?g|webp)(\?|#|$)/i.test(url)) return;
-  candidates.push({ url, includesName: logoIncludesCompanyName(url, label) });
+  candidates.push({
+    url,
+    includesName: logoIncludesCompanyName(url, label),
+    needsContrast: logoNeedsContrast(url, label)
+  });
 }
 
 function brandFromJsonLd(html: string, baseUrl: string) {
@@ -279,12 +290,19 @@ export async function resolveCompanyBrandFromWebsite(customerWebsite: string): P
           name: websiteBrand?.name || match.name || fallback.name,
           domain,
           logoUrl: websiteBrand?.logo?.url || faviconLogoUrl(domain),
-          logoIncludesName: Boolean(websiteBrand?.logo?.includesName)
+          logoIncludesName: Boolean(websiteBrand?.logo?.includesName),
+          logoNeedsContrast: Boolean(websiteBrand?.logo?.needsContrast)
         };
       }
     }
     return websiteBrand?.logo
-      ? { ...fallback, name: websiteBrand.name || fallback.name, logoUrl: websiteBrand.logo.url, logoIncludesName: websiteBrand.logo.includesName }
+      ? {
+          ...fallback,
+          name: websiteBrand.name || fallback.name,
+          logoUrl: websiteBrand.logo.url,
+          logoIncludesName: websiteBrand.logo.includesName,
+          logoNeedsContrast: Boolean(websiteBrand.logo.needsContrast)
+        }
       : fallback;
   } catch {
     return fallback;

@@ -234,6 +234,7 @@ export async function restoreBoardSnapshot(ownerEmail: string, boardId: string) 
     customerLogoUrl: prior.customerLogoUrl,
     customerLogoAlt: prior.customerLogoAlt,
     customerLogoIncludesName: prior.customerLogoIncludesName,
+    customerLogoNeedsContrast: prior.customerLogoNeedsContrast,
     state: {
       ...structuredCloneState(prior.state),
       customerName: prior.customerName,

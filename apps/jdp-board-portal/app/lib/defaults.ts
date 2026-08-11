@@ -111,6 +111,7 @@ export function createBoard(ownerEmail: string, customerName: string, sharedEmai
     customerLogoUrl: brand?.logoUrl,
     customerLogoAlt: brand?.name ? `${brand.name} logo` : `${cleanCustomer} logo`,
     customerLogoIncludesName: Boolean(brand?.logoIncludesName),
+    customerLogoNeedsContrast: Boolean(brand?.logoNeedsContrast),
     createdAt: now,
     updatedAt: now,
     state: {
