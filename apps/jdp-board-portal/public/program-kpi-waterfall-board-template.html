@@ -245,6 +245,57 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
+  .section-visibility-panel {
+    background: #fff;
+    border-bottom: 1px solid var(--flz-line);
+  }
+  .section-visibility-inner {
+    width: var(--rail);
+    margin: 0 auto;
+    padding: 16px 0;
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .section-visibility-inner h2 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--flz-navy);
+  }
+  .section-visibility-inner p {
+    margin: 4px 0 0;
+    color: var(--flz-muted);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .section-visibility-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .section-visibility-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--flz-line);
+    background: var(--flz-soft);
+    color: var(--flz-slate);
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 12px;
+    font-weight: 900;
+    min-height: auto;
+    cursor: pointer;
+  }
+  .section-visibility-toggle input {
+    width: auto;
+    min-height: auto;
+    accent-color: var(--flz-blue);
+  }
+  .board-section-hidden {
+    display: none !important;
+  }
   .hero-panel {
     background: rgba(255, 255, 255, .86);
     border: 1px solid rgba(216, 236, 250, .95);
@@ -1272,7 +1323,7 @@
       overflow: visible;
     }
     .program-panel-resizer { display: none; }
-    .summary-grid, .sections-grid, .quarter-rollup, .campaign-rollup, .planner-settings { grid-template-columns: 1fr; }
+    .summary-grid, .sections-grid, .quarter-rollup, .campaign-rollup, .planner-settings, .section-visibility-inner { grid-template-columns: 1fr; }
     .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .actuals-grid, .tracking-strip, .program-value-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
@@ -1393,7 +1444,7 @@
 </header>
 
 <main id="main">
-  <section class="hero" aria-labelledby="hero-title">
+  <section class="hero" id="hero-section" aria-labelledby="hero-title">
     <div class="hero-inner">
       <div>
         <div class="eyebrow">Build. Activate. Signal.</div>
@@ -1424,6 +1475,16 @@
     </div>
   </section>
 
+  <section class="section-visibility-panel" id="sectionVisibilityPanel" aria-labelledby="section-visibility-title">
+    <div class="section-visibility-inner">
+      <div>
+        <h2 id="section-visibility-title">Section visibility</h2>
+        <p>Hide or show board sections for the current customer view.</p>
+      </div>
+      <div class="section-visibility-options" id="sectionVisibilityOptions"></div>
+    </div>
+  </section>
+
   <section class="section" id="planner" aria-labelledby="planner-title">
     <div class="section-head">
       <div>
@@ -1434,7 +1495,7 @@
       <button class="primary-btn" type="button" onclick="addProgramFromButton(this)">+ Program type</button>
     </div>
 
-    <div class="planner-settings" aria-label="Company year settings">
+    <div class="planner-settings" id="plannerSettings" aria-label="Company year settings">
       <div class="field">
         <label for="plan-activeYear">Planning year</label>
         <select id="plan-activeYear" onchange="updatePlanSetting('activeYear', this.value)">
@@ -1459,7 +1520,7 @@
       </div>
     </div>
 
-    <div class="totals" aria-label="Portfolio totals">
+    <div class="totals" id="topTotals" aria-label="Portfolio totals">
       <div class="stat"><span>Programs</span><strong id="totalPrograms">0</strong><em>Active program sections</em></div>
       <div class="stat"><span>Pipeline goal</span><strong id="totalPipeline">$0</strong><em>Modeled pipeline</em></div>
       <div class="stat"><span>Bookings</span><strong id="totalBookings">$0</strong><em>Modeled closed-won value</em></div>
@@ -1621,6 +1682,17 @@
   const fiscalQuarters = ['Q1', 'Q2', 'Q3', 'Q4'];
   const programPeriods = [...fiscalQuarters, 'Evergreen'];
   const programYears = ['2026', '2027', '2028', '2029'];
+  const boardSectionOptions = [
+    { key: 'hero', label: 'Hero', selector: '#hero-section' },
+    { key: 'plannerSettings', label: 'Planning settings', selector: '#plannerSettings' },
+    { key: 'topTotals', label: 'Top totals', selector: '#topTotals' },
+    { key: 'quarterRollup', label: 'Quarter rollup', selector: '#quarterRollup' },
+    { key: 'campaignRollup', label: 'Campaign rollup', selector: '#campaignRollup' },
+    { key: 'programs', label: 'Programs', selector: '#add-program-section' },
+    { key: 'portfolio', label: 'Portfolio summary', selector: '#portfolio' },
+    { key: 'pipelineWaterfall', label: 'Pipeline waterfall image', selector: '#pipeline-waterfall' },
+    { key: 'waterfallSections', label: 'Waterfall sections', selector: '#sections' }
+  ];
 
   let programs = [
     {
@@ -1655,6 +1727,7 @@
   };
   let channelEditorOpen = {};
   let channelDrafts = {};
+  let hiddenBoardSections = {};
 
   const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   const compactCurrency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
@@ -1809,6 +1882,43 @@
     return Boolean(program && (isBoardOwner() || isProgramCreator(program)));
   }
 
+  function normalizeHiddenBoardSections(hiddenSections = {}) {
+    return Object.fromEntries(boardSectionOptions.map(section => [section.key, Boolean(hiddenSections[section.key])]));
+  }
+
+  function renderSectionVisibilityControls() {
+    const target = document.getElementById('sectionVisibilityOptions');
+    if (!target) return;
+    const normalized = normalizeHiddenBoardSections(hiddenBoardSections);
+    target.innerHTML = boardSectionOptions.map(section => `
+      <label class="section-visibility-toggle" for="section-visible-${section.key}">
+        <input id="section-visible-${section.key}" type="checkbox" ${normalized[section.key] ? '' : 'checked'} onchange="toggleBoardSection('${section.key}', this.checked)">
+        ${escapeHtml(section.label)}
+      </label>
+    `).join('');
+  }
+
+  function applyBoardSectionVisibility() {
+    const normalized = normalizeHiddenBoardSections(hiddenBoardSections);
+    for (const section of boardSectionOptions) {
+      const element = document.querySelector(section.selector);
+      if (element) element.classList.toggle('board-section-hidden', Boolean(normalized[section.key]));
+    }
+  }
+
+  function toggleBoardSection(sectionKey, isVisible) {
+    hiddenBoardSections = normalizeHiddenBoardSections(hiddenBoardSections);
+    hiddenBoardSections[sectionKey] = !isVisible;
+    applyBoardSectionVisibility();
+    persistStateDebounced();
+    const section = boardSectionOptions.find(item => item.key === sectionKey);
+    safeAnalytic('board_section_visibility_toggle', {
+      text: `${section?.label || sectionKey} ${isVisible ? 'shown' : 'hidden'}`,
+      area: 'section visibility',
+      value: sectionKey
+    });
+  }
+
   function normalizeCollapsedSections(collapsedSections = {}) {
     return {
       campaign: Boolean(collapsedSections.campaign),
@@ -1868,6 +1978,7 @@
       selectedCsm,
       activeId,
       planSettings: { ...planSettings },
+      hiddenBoardSections: normalizeHiddenBoardSections(hiddenBoardSections),
       channelEditorOpen: { ...channelEditorOpen },
       channelDrafts: Object.fromEntries(Object.entries(channelDrafts).map(([id, channels]) => [id, normalizeChannels(channels)])),
       programs: programs.map(program => ({
@@ -1980,6 +2091,7 @@
     programs = state.programs.map(normalizeProgramState);
     selectedCsm = state.selectedCsm || selectedCsm;
     activeId = programs.some(program => program.id === state.activeId) ? state.activeId : (programs[0] ? programs[0].id : null);
+    hiddenBoardSections = normalizeHiddenBoardSections(state.hiddenBoardSections);
     channelEditorOpen = state.channelEditorOpen && typeof state.channelEditorOpen === 'object'
       ? Object.fromEntries(Object.entries(state.channelEditorOpen).map(([id, open]) => [id, Boolean(open)]))
       : {};
@@ -3489,19 +3601,23 @@
 
   function render() {
     syncHeaderControls();
+    renderSectionVisibilityControls();
     renderTabs();
     renderEditor();
     renderTotals();
     renderSections();
+    applyBoardSectionVisibility();
   }
 
   function renderLiveOutputs() {
     syncHeaderControls();
+    renderSectionVisibilityControls();
     renderTabs();
     renderTotals();
     renderWaterfallPreview();
     renderActualTracking();
     renderSections();
+    applyBoardSectionVisibility();
   }
 
   function syncHeaderControls() {
