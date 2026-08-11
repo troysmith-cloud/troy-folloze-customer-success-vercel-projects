@@ -20,6 +20,7 @@ export const programTypes = [
   'New Product Launch',
   'Content Hub',
   'Article Hub',
+  'Targeted Campaign',
   'Other'
 ];
 
