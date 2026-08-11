@@ -733,21 +733,68 @@
     border-color: var(--flz-blue);
     color: white;
   }
+  .editor-collapse-wide {
+    grid-column: 1 / -1;
+  }
+  .collapsible-section {
+    border: 1px solid var(--flz-line);
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .collapsible-section + .collapsible-section {
+    margin-top: 12px;
+  }
+  .collapsible-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--flz-soft);
+  }
+  .collapsible-section-header h3 {
+    margin: 0;
+    color: var(--flz-navy);
+    font-size: 16px;
+  }
+  .collapsible-section-header p {
+    margin: 3px 0 0;
+    color: var(--flz-muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .collapse-toggle {
+    flex: 0 0 auto;
+    border: 1px solid var(--flz-line);
+    background: #fff;
+    color: var(--flz-blue);
+    border-radius: 999px;
+    padding: 7px 12px;
+    min-height: auto;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .collapsible-body {
+    padding: 14px;
+  }
+  .collapsible-section.is-collapsed .collapsible-body {
+    display: none;
+  }
+  .collapsible-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
   .actuals-panel {
     margin-top: 18px;
     padding-top: 18px;
-    border-top: 1px solid var(--flz-line);
-  }
-  .actuals-panel h3 {
-    margin: 0 0 6px;
-    color: var(--flz-navy);
-    font-size: 20px;
   }
   .actuals-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
-    margin-top: 12px;
   }
   .tracking-strip {
     display: grid;
@@ -1241,7 +1288,7 @@
     .hero-inner { padding: 36px 0 28px; }
     .hero-actions, .list-actions { flex-direction: column; }
     .primary-btn, .secondary-btn, .ghost-btn { width: 100%; }
-    .totals, .editor-grid, .benchmark-grid, .actuals-grid, .tracking-strip, .channel-options { grid-template-columns: 1fr; }
+    .totals, .editor-grid, .benchmark-grid, .actuals-grid, .tracking-strip, .channel-options, .collapsible-grid { grid-template-columns: 1fr; }
     .program-value-strip { grid-template-columns: 1fr; }
     .waterfall-row, .mini-step {
       grid-template-columns: 1fr;
@@ -1590,6 +1637,7 @@
       secondaryContent: 'Solution proof',
       notes: 'Replace this example row with the customer program details.',
       locked: false,
+      collapsedSections: { campaign: false, segment: false, actuals: false },
       mode: 'Standard',
       accounts: 1200,
       accountScale: 100,
@@ -1761,6 +1809,49 @@
     return Boolean(program && (isBoardOwner() || isProgramCreator(program)));
   }
 
+  function normalizeCollapsedSections(collapsedSections = {}) {
+    return {
+      campaign: Boolean(collapsedSections.campaign),
+      segment: Boolean(collapsedSections.segment),
+      actuals: Boolean(collapsedSections.actuals)
+    };
+  }
+
+  function isProgramSectionCollapsed(program, section) {
+    return Boolean(normalizeCollapsedSections(program.collapsedSections)[section]);
+  }
+
+  function toggleProgramSection(id, section) {
+    const program = programs.find(p => p.id === id);
+    if (!program) return;
+    program.collapsedSections = normalizeCollapsedSections(program.collapsedSections);
+    program.collapsedSections[section] = !program.collapsedSections[section];
+    renderEditor();
+    persistStateDebounced();
+    safeAnalytic('program_section_toggle', {
+      text: `${section} ${program.collapsedSections[section] ? 'collapsed' : 'expanded'}`,
+      area: 'program planner',
+      value: section
+    });
+  }
+
+  function collapsibleSection(program, section, title, description, bodyHtml, options = {}) {
+    const collapsed = isProgramSectionCollapsed(program, section);
+    const className = ['collapsible-section', options.className || '', collapsed ? 'is-collapsed' : ''].filter(Boolean).join(' ');
+    return `<section class="${className}" data-section="${escapeHtml(section)}">
+      <div class="collapsible-section-header">
+        <div>
+          <h3>${escapeHtml(title)}</h3>
+          ${description ? `<p>${escapeHtml(description)}</p>` : ''}
+        </div>
+        <button class="collapse-toggle" type="button" onclick="toggleProgramSection('${program.id}', '${section}')" aria-expanded="${collapsed ? 'false' : 'true'}">
+          ${collapsed ? 'Show' : 'Hide'}
+        </button>
+      </div>
+      <div class="collapsible-body">${bodyHtml}</div>
+    </section>`;
+  }
+
   function programAccessLabel(program) {
     if (program.allowAnyoneEdit) return 'Anyone with access can edit this program.';
     const creator = programCreatorEmail(program);
@@ -1804,6 +1895,7 @@
       secondaryContent: program.secondaryContent || '',
       notes: program.notes || '',
       locked: Boolean(program.locked),
+      collapsedSections: normalizeCollapsedSections(program.collapsedSections),
       createdByEmail: normalizeEmailValue(program.createdByEmail || currentOwnerEmail() || currentViewerEmail()),
       allowAnyoneEdit: Boolean(program.allowAnyoneEdit),
       priority: programPriorities.includes(String(program.priority)) ? String(program.priority) : '3',
@@ -2339,6 +2431,7 @@
       secondaryContent: seed.secondaryContent || '',
       notes: seed.notes || '',
       locked: Boolean(seed.locked),
+      collapsedSections: normalizeCollapsedSections(seed.collapsedSections),
       createdByEmail: normalizeEmailValue(seed.createdByEmail || currentViewerEmail() || currentOwnerEmail()),
       allowAnyoneEdit: Boolean(seed.allowAnyoneEdit),
       priority: programPriorities.includes(String(seed.priority)) ? String(seed.priority) : '3',
@@ -2604,9 +2697,17 @@
         ${selectField(program, 'type', '+ Program Type', program.type, programTypes)}
         ${prioritySelectField(program)}
         ${inputField(program, 'name', 'Program Name', program.name, 'text', { wide: true })}
-        ${inputField(program, 'campaign', 'Campaign', program.campaign || '', 'text', { wide: true })}
-        ${inputField(program, 'segment', 'Primary Segment/Audience', program.segment, 'text')}
-        ${inputField(program, 'subSegment', 'Sub Category Segment/Audience', program.subSegment, 'text')}
+        <div class="editor-collapse-wide">
+          ${collapsibleSection(program, 'campaign', 'Campaign', 'Group related programs together for rollup reporting.', inputField(program, 'campaign', 'Campaign', program.campaign || '', 'text', { wide: true }))}
+        </div>
+        <div class="editor-collapse-wide">
+          ${collapsibleSection(program, 'segment', 'Segment / Audience', 'Capture primary audience and sub-category details for this program.', `
+            <div class="collapsible-grid">
+              ${inputField(program, 'segment', 'Primary Segment/Audience', program.segment, 'text')}
+              ${inputField(program, 'subSegment', 'Sub Category Segment/Audience', program.subSegment, 'text')}
+            </div>
+          `)}
+        </div>
         ${channelField(program)}
         ${selectField(program, 'content', 'Primary Content / Messaging', program.content || 'Thought leadership', contentCategories)}
         ${selectField(program, 'secondaryContent', 'Secondary Content / Messaging', program.secondaryContent || 'Solution proof', contentCategories)}
@@ -2633,8 +2734,7 @@
         <p class="hint">Editing any benchmark automatically switches Benchmark Mode to Custom. In Standard mode, the planner uses 100%, 30%, 10%, 50%, and 30%.</p>
       </div>
       <div class="actuals-panel">
-        <h3>Actuals against projection</h3>
-        <p class="hint">Populate actuals as programs launch. Attainment compares each actual value against the current modeled benchmark output.</p>
+        ${collapsibleSection(program, 'actuals', 'Actuals against projection', 'Populate actuals as programs launch. Attainment compares each actual value against the current modeled benchmark output.', `
         <div class="actuals-grid">
           ${inputField(program, 'actual.liveBoards', 'Published Boards', actual.liveBoards, 'number', { min: 0, step: 1 })}
           ${inputField(program, 'actual.engaged', 'Actual Engaged', actual.engaged, 'number', { min: 0, step: 1 })}
@@ -2645,6 +2745,7 @@
           ${inputField(program, 'actual.bookings', 'Actual Bookings', actual.bookings, 'number', { min: 0, step: 1000 })}
         </div>
         <div class="tracking-strip" id="actualTracking-${program.id}">${actualTrackingHtml(program)}</div>
+        `)}
       </div>
       <div class="waterfall-preview" id="waterfallPreview" aria-label="Waterfall preview">${waterfallPreview(program)}</div>
       <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
